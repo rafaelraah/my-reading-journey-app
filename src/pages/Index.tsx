@@ -6,11 +6,14 @@ import { Library, Loader2 } from 'lucide-react';
 
 const Index = () => {
   const {
+    books,
     loading,
     addBook,
     updateStatus,
     uploadCover,
     getBooksByStatus,
+    saveReview,
+    deleteBook,
     filter,
     setFilter,
     sortBy,
@@ -65,6 +68,9 @@ const Index = () => {
             <KanbanBoard
               getBooksByStatus={getBooksByStatus}
               onUpdateStatus={updateStatus}
+              onSaveReview={saveReview}
+              onDeleteBook={deleteBook}
+              books={books}
             />
           </section>
         )}
