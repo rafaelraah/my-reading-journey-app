@@ -22,6 +22,8 @@ export type Database = {
           id: string
           imagem_url: string | null
           paginas: number
+          rating: number | null
+          review: string | null
           status: string
           titulo: string
         }
@@ -32,6 +34,8 @@ export type Database = {
           id?: string
           imagem_url?: string | null
           paginas?: number
+          rating?: number | null
+          review?: string | null
           status?: string
           titulo: string
         }
@@ -42,6 +46,8 @@ export type Database = {
           id?: string
           imagem_url?: string | null
           paginas?: number
+          rating?: number | null
+          review?: string | null
           status?: string
           titulo?: string
         }
