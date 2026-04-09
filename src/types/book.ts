@@ -6,6 +6,8 @@ export interface Book {
   categoria: string;
   imagem_url: string | null;
   status: 'quero_ler' | 'lendo' | 'lido';
+  rating: number | null;
+  review: string | null;
   created_at: string;
 }
 

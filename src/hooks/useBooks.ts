@@ -58,6 +58,32 @@ export function useBooks() {
     }
   };
 
+  const saveReview = async (id: string, rating: number, review: string) => {
+    setBooks(prev => prev.map(b => b.id === id ? { ...b, rating, review } : b));
+    const { error } = await supabase
+      .from('livros')
+      .update({ rating, review })
+      .eq('id', id);
+    if (error) {
+      toast.error('Erro ao salvar avaliação');
+      await fetchBooks();
+    }
+  };
+
+  const deleteBook = async (id: string) => {
+    setBooks(prev => prev.filter(b => b.id !== id));
+    const { error } = await supabase
+      .from('livros')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      toast.error('Erro ao excluir livro');
+      await fetchBooks();
+    } else {
+      toast.success('Livro excluído com sucesso!');
+    }
+  };
+
   const uploadCover = async (file: File): Promise<string | null> => {
     const ext = file.name.split('.').pop();
     const fileName = `${crypto.randomUUID()}.${ext}`;
@@ -92,6 +118,8 @@ export function useBooks() {
     updateStatus,
     uploadCover,
     getBooksByStatus,
+    saveReview,
+    deleteBook,
     filter,
     setFilter,
     sortBy,

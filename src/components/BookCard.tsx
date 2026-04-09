@@ -1,13 +1,18 @@
 import { Book } from '@/types/book';
 import { BookOpen } from 'lucide-react';
+import { StarRating } from './StarRating';
 
 interface BookCardProps {
   book: Book;
+  onClick?: () => void;
 }
 
-export function BookCard({ book }: BookCardProps) {
+export function BookCard({ book, onClick }: BookCardProps) {
   return (
-    <div className="group parchment-bg rounded-lg border border-border p-3 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-grab active:cursor-grabbing">
+    <div
+      className="group parchment-bg rounded-lg border border-border p-3 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-grab active:cursor-grabbing"
+      onClick={onClick}
+    >
       <div className="flex gap-3">
         {book.imagem_url ? (
           <img
@@ -31,6 +36,11 @@ export function BookCard({ book }: BookCardProps) {
             </span>
             <span className="text-xs text-muted-foreground">{book.paginas} pgs</span>
           </div>
+          {book.rating && (
+            <div className="mt-1.5">
+              <StarRating value={book.rating} readonly size="sm" />
+            </div>
+          )}
         </div>
       </div>
     </div>
