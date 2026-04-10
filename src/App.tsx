@@ -3,9 +3,10 @@ import { BrowserRouter, Route, Routes, NavLink } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Library, ScrollText } from "lucide-react";
+import { Library, ScrollText, User } from "lucide-react";
 import Index from "./pages/Index.tsx";
 import History from "./pages/History.tsx";
+import Profile from "./pages/Profile.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();

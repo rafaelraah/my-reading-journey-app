@@ -97,7 +97,7 @@ const Profile = () => {
                     onKeyDown={e => e.key === 'Enter' && handleSaveName()}
                   />
                   <Button size="icon" variant="ghost" onClick={handleSaveName}>
-                    <Check className="h-4 w-4 text-green-600" />
+                    <Check className="h-4 w-4 text-accent" />
                   </Button>
                   <Button size="icon" variant="ghost" onClick={() => { setEditingName(false); setNameValue(profile.nome); }}>
                     <X className="h-4 w-4 text-destructive" />
