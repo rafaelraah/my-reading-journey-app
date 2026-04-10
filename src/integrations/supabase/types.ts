@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      livro_eventos: {
+        Row: {
+          created_at: string
+          descricao: string
+          id: string
+          livro_id: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          id?: string
+          livro_id: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          id?: string
+          livro_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "livro_eventos_livro_id_fkey"
+            columns: ["livro_id"]
+            isOneToOne: false
+            referencedRelation: "livros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       livros: {
         Row: {
           autor: string
