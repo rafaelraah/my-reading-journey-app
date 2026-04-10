@@ -46,11 +46,25 @@ const App = () => (
               <ScrollText className="h-4 w-4" />
               Histórico
             </NavLink>
+            <NavLink
+              to="/perfil"
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-4 py-2.5 font-display text-sm rounded-t-lg transition-colors ${
+                  isActive
+                    ? 'bg-background text-foreground border border-b-0 border-border -mb-px'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`
+              }
+            >
+              <User className="h-4 w-4" />
+              Perfil
+            </NavLink>
           </div>
         </nav>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/historico" element={<History />} />
+          <Route path="/perfil" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
