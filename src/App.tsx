@@ -3,9 +3,10 @@ import { BrowserRouter, Route, Routes, NavLink } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Library, ScrollText } from "lucide-react";
+import { Library, ScrollText, User } from "lucide-react";
 import Index from "./pages/Index.tsx";
 import History from "./pages/History.tsx";
+import Profile from "./pages/Profile.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -45,11 +46,25 @@ const App = () => (
               <ScrollText className="h-4 w-4" />
               Histórico
             </NavLink>
+            <NavLink
+              to="/perfil"
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-4 py-2.5 font-display text-sm rounded-t-lg transition-colors ${
+                  isActive
+                    ? 'bg-background text-foreground border border-b-0 border-border -mb-px'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`
+              }
+            >
+              <User className="h-4 w-4" />
+              Perfil
+            </NavLink>
           </div>
         </nav>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/historico" element={<History />} />
+          <Route path="/perfil" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
