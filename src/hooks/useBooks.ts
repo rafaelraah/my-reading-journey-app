@@ -2,12 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Book } from '@/types/book';
 import { toast } from 'sonner';
+import { useBookEvents } from './useBookEvents';
 
 export function useBooks() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'titulo' | 'created_at'>('created_at');
+  const { logCreated, logMoved, logRated, logReviewAdded } = useBookEvents();
 
   const fetchBooks = useCallback(async () => {
     const { data, error } = await supabase
@@ -29,9 +31,11 @@ export function useBooks() {
   }, [fetchBooks]);
 
   const addBook = async (book: Omit<Book, 'id' | 'created_at' | 'status'>) => {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('livros')
-      .insert({ ...book, status: 'quero_ler' });
+      .insert({ ...book, status: 'quero_ler' })
+      .select()
+      .single();
 
     if (error) {
       toast.error('Erro ao adicionar livro');
@@ -39,12 +43,14 @@ export function useBooks() {
       return false;
     }
     toast.success('Livro adicionado com sucesso!');
+    if (data) {
+      await logCreated(data.id);
+    }
     await fetchBooks();
     return true;
   };
 
   const updateStatus = async (id: string, status: Book['status']) => {
-    // Optimistic update
     setBooks(prev => prev.map(b => b.id === id ? { ...b, status } : b));
 
     const { error } = await supabase
@@ -55,6 +61,8 @@ export function useBooks() {
     if (error) {
       toast.error('Erro ao atualizar status');
       await fetchBooks();
+    } else {
+      await logMoved(id, status);
     }
   };
 
@@ -67,6 +75,11 @@ export function useBooks() {
     if (error) {
       toast.error('Erro ao salvar avaliação');
       await fetchBooks();
+    } else {
+      await logRated(id, rating);
+      if (review.trim()) {
+        await logReviewAdded(id);
+      }
     }
   };
 

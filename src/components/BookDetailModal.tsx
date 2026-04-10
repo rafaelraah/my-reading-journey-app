@@ -1,5 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Book, STATUS_LABELS } from '@/types/book';
 import { StarRating } from './StarRating';
+import { EventTimeline } from './EventTimeline';
+import { useBookEvents, BookEvent } from '@/hooks/useBookEvents';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -29,11 +32,22 @@ interface BookDetailModalProps {
 }
 
 export function BookDetailModal({ book, open, onClose, onDelete }: BookDetailModalProps) {
+  const { fetchBookEvents } = useBookEvents();
+  const [events, setEvents] = useState<BookEvent[]>([]);
+
+  useEffect(() => {
+    if (book && open) {
+      fetchBookEvents(book.id).then(setEvents);
+    } else {
+      setEvents([]);
+    }
+  }, [book, open, fetchBookEvents]);
+
   if (!book) return null;
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="parchment-bg border-border max-w-lg">
+      <DialogContent className="parchment-bg border-border max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-accent" />
@@ -89,6 +103,12 @@ export function BookDetailModal({ book, open, onClose, onDelete }: BookDetailMod
             </p>
           </div>
         )}
+
+        {/* Timeline */}
+        <div className="mt-4 p-4 rounded-lg bg-background/60 border border-border">
+          <h4 className="font-display text-sm font-semibold mb-3 text-foreground">Histórico</h4>
+          <EventTimeline events={events} />
+        </div>
 
         <div className="flex justify-end mt-2">
           <AlertDialog>
