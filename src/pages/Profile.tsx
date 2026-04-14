@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useBooks } from '@/hooks/useBooks';
 import { useBookEvents } from '@/hooks/useBookEvents';
@@ -9,8 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { StarRating } from '@/components/StarRating';
 import { EventTimeline } from '@/components/EventTimeline';
-import { BookOpen, Star, Clock, Settings, Camera, Pencil, Check, X, Loader2, User } from 'lucide-react';
-import { useEffect } from 'react';
+import { BookOpen, Star, Clock, Settings, Camera, Pencil, Check, X, Loader2, User, BarChart3 } from 'lucide-react';
+import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
+import { BookEvent } from '@/hooks/useBookEvents';
 
 const Profile = () => {
   const { profile, loading, updateName, uploadAvatar } = useUserProfile();
@@ -134,8 +137,11 @@ const Profile = () => {
 
       {/* Tabs */}
       <div className="container max-w-4xl mx-auto px-4 py-6">
-        <Tabs defaultValue="books" className="w-full">
-          <TabsList className="w-full grid grid-cols-4 mb-6">
+        <Tabs defaultValue="dashboard" className="w-full">
+          <TabsList className="w-full grid grid-cols-5 mb-6">
+            <TabsTrigger value="dashboard" className="flex items-center gap-1.5 text-sm">
+              <BarChart3 className="h-4 w-4" /> Dashboard
+            </TabsTrigger>
             <TabsTrigger value="books" className="flex items-center gap-1.5 text-sm">
               <BookOpen className="h-4 w-4" /> Meus Livros
             </TabsTrigger>
@@ -149,6 +155,11 @@ const Profile = () => {
               <Settings className="h-4 w-4" /> Configurações
             </TabsTrigger>
           </TabsList>
+
+          {/* Dashboard */}
+          <TabsContent value="dashboard">
+            <ProfileDashboard books={books} />
+          </TabsContent>
 
           {/* Meus Livros */}
           <TabsContent value="books">
