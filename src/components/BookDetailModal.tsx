@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { BookOpen, Trash2 } from 'lucide-react';
+import { BookOpen, Trash2, Share2 } from 'lucide-react';
 
 interface BookDetailModalProps {
   book: Book | null;
@@ -110,7 +110,19 @@ export function BookDetailModal({ book, open, onClose, onDelete }: BookDetailMod
           <EventTimeline events={events} />
         </div>
 
-        <div className="flex justify-end mt-2">
+        <div className="flex justify-between mt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-display"
+            onClick={() => {
+              const msg = encodeURIComponent(`📚 Estou lendo o livro "${book.titulo}"! Recomendo muito. Venha ver e adicionar à sua lista: ${window.location.origin}`);
+              window.open(`https://wa.me/?text=${msg}`, '_blank');
+            }}
+          >
+            <Share2 className="h-4 w-4 mr-2" />
+            Compartilhar
+          </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="sm" className="font-display">
