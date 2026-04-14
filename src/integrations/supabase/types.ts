@@ -85,6 +85,84 @@ export type Database = {
         }
         Relationships: []
       }
+      livros_globais: {
+        Row: {
+          autor: string
+          categoria: string
+          created_at: string
+          id: string
+          imagem_url: string | null
+          paginas: number
+          titulo: string
+        }
+        Insert: {
+          autor: string
+          categoria?: string
+          created_at?: string
+          id?: string
+          imagem_url?: string | null
+          paginas?: number
+          titulo: string
+        }
+        Update: {
+          autor?: string
+          categoria?: string
+          created_at?: string
+          id?: string
+          imagem_url?: string | null
+          paginas?: number
+          titulo?: string
+        }
+        Relationships: []
+      }
+      usuario_livros: {
+        Row: {
+          created_at: string
+          current_page: number | null
+          id: string
+          livro_id: string
+          rating: number | null
+          review: string | null
+          status: string
+          usuario_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_page?: number | null
+          id?: string
+          livro_id: string
+          rating?: number | null
+          review?: string | null
+          status?: string
+          usuario_id: string
+        }
+        Update: {
+          created_at?: string
+          current_page?: number | null
+          id?: string
+          livro_id?: string
+          rating?: number | null
+          review?: string | null
+          status?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usuario_livros_livro_id_fkey"
+            columns: ["livro_id"]
+            isOneToOne: false
+            referencedRelation: "livros_globais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "usuario_livros_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       usuarios: {
         Row: {
           avatar_url: string | null
