@@ -265,4 +265,100 @@ const Profile = () => {
   );
 };
 
+function ProfileDashboard({ books }: { books: import('@/types/book').Book[] }) {
+  const [allEvents, setAllEvents] = useState<BookEvent[]>([]);
+
+  useEffect(() => {
+    supabase.from('livro_eventos').select('*').order('created_at', { ascending: false }).then(({ data }) => {
+      setAllEvents((data as BookEvent[]) || []);
+    });
+  }, []);
+
+  const readBooks = books.filter(b => b.status === 'lido');
+  const readingBooks = books.filter(b => b.status === 'lendo');
+  const wantBooks = books.filter(b => b.status === 'quero_ler');
+  const ratedBooks = books.filter(b => b.rating && b.rating > 0);
+  const avgRating = ratedBooks.length > 0
+    ? (ratedBooks.reduce((s, b) => s + (b.rating || 0), 0) / ratedBooks.length).toFixed(1)
+    : '—';
+
+  const now = new Date();
+  const monthlyData: { month: string; count: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const m = subMonths(now, i);
+    const mStart = startOfMonth(m);
+    const mEnd = endOfMonth(m);
+    const count = allEvents.filter(e => {
+      if (e.tipo !== 'moved' || !e.descricao.includes('Já Li')) return false;
+      const d = new Date(e.created_at);
+      return d >= mStart && d <= mEnd;
+    }).length;
+    monthlyData.push({ month: format(m, 'MMM', { locale: ptBR }), count });
+  }
+  const maxMonthly = Math.max(...monthlyData.map(m => m.count), 1);
+
+  const catCount: Record<string, number> = {};
+  readBooks.forEach(b => { catCount[b.categoria] = (catCount[b.categoria] || 0) + 1; });
+
+  return (
+    <div className="space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { label: 'Quero Ler', value: wantBooks.length, color: 'text-blue-600' },
+          { label: 'Lendo', value: readingBooks.length, color: 'text-purple-600' },
+          { label: 'Lidos', value: readBooks.length, color: 'text-green-600' },
+          { label: 'Média', value: avgRating, color: 'text-yellow-600' },
+        ].map((item, i) => (
+          <Card key={i}>
+            <CardContent className="p-4 text-center">
+              <p className={`text-3xl font-bold ${item.color}`}>{item.value}</p>
+              <p className="text-sm text-muted-foreground font-display">{item.label}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Monthly chart */}
+      <Card>
+        <CardContent className="p-6">
+          <h3 className="font-display text-lg font-semibold text-foreground mb-4">Livros lidos por mês</h3>
+          <div className="flex items-end gap-3 h-32">
+            {monthlyData.map((m, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                <span className="text-sm font-bold text-foreground">{m.count}</span>
+                <div
+                  className="w-full rounded-t-md bg-accent/80 transition-all duration-500"
+                  style={{ height: `${(m.count / maxMonthly) * 100}%`, minHeight: m.count > 0 ? '8px' : '2px' }}
+                />
+                <span className="text-xs text-muted-foreground font-display capitalize">{m.month}</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Category distribution */}
+      {Object.keys(catCount).length > 0 && (
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="font-display text-lg font-semibold text-foreground mb-4">Distribuição por categoria</h3>
+            <div className="space-y-3">
+              {Object.entries(catCount).sort((a, b) => b[1] - a[1]).map(([cat, count]) => (
+                <div key={cat} className="flex items-center gap-3">
+                  <span className="text-sm font-display w-40 truncate">{cat}</span>
+                  <div className="flex-1 bg-secondary rounded-full h-3 overflow-hidden">
+                    <div className="h-full bg-accent rounded-full transition-all duration-500" style={{ width: `${(count / readBooks.length) * 100}%` }} />
+                  </div>
+                  <span className="text-sm text-muted-foreground w-8 text-right">{count}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export default Profile;
