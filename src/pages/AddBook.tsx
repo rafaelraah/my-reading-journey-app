@@ -60,9 +60,8 @@ const AddBook = () => {
 
     if (success && user) {
       // Auto-add to creator's shelf
-      // We need the ID of the just-created book. Re-fetch to get it.
-      const { supabase } = await import('@/integrations/supabase/client');
-      const { data } = await supabase
+      const { supabase: sb } = await import('@/integrations/supabase/client');
+      const { data } = await sb
         .from('livros_globais')
         .select('id')
         .eq('titulo', titulo)
