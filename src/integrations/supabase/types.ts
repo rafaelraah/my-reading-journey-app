@@ -169,18 +169,24 @@ export type Database = {
           created_at: string
           id: string
           nome: string
+          password_hash: string | null
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           id?: string
           nome?: string
+          password_hash?: string | null
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           id?: string
           nome?: string
+          password_hash?: string | null
+          username?: string | null
         }
         Relationships: []
       }

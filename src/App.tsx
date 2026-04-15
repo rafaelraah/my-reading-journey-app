@@ -3,14 +3,17 @@ import { BrowserRouter, Route, Routes, NavLink } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Library, ScrollText, User, TrendingUp, Compass, PlusCircle } from "lucide-react";
+import { Library, ScrollText, User, TrendingUp, Compass, PlusCircle, LogOut } from "lucide-react";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Index from "./pages/Index.tsx";
 import History from "./pages/History.tsx";
 import Profile from "./pages/Profile.tsx";
 import Insights from "./pages/Insights.tsx";
 import Explore from "./pages/Explore.tsx";
 import AddBook from "./pages/AddBook.tsx";
+import Login from "./pages/Login.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import { Button } from "@/components/ui/button";
 
 const queryClient = new QueryClient();
 
@@ -23,14 +26,17 @@ const navItems = [
   { to: "/perfil", label: "Perfil", icon: User },
 ];
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <nav className="parchment-bg border-b border-border">
-          <div className="container max-w-7xl mx-auto px-4 flex gap-1 pt-2 overflow-x-auto">
+function AppContent() {
+  const { user, loading, logout } = useAuth();
+
+  if (loading) return null;
+  if (!user) return <Login />;
+
+  return (
+    <>
+      <nav className="parchment-bg border-b border-border">
+        <div className="container max-w-7xl mx-auto px-4 flex items-center pt-2 overflow-x-auto">
+          <div className="flex gap-1 flex-1">
             {navItems.map(item => {
               const Icon = item.icon;
               return (
@@ -52,17 +58,37 @@ const App = () => (
               );
             })}
           </div>
-        </nav>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/historico" element={<History />} />
-          <Route path="/insights" element={<Insights />} />
-          <Route path="/explorar" element={<Explore />} />
-          <Route path="/adicionar" element={<AddBook />} />
-          <Route path="/perfil" element={<Profile />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+          <div className="flex items-center gap-2 pb-1">
+            <span className="text-sm text-muted-foreground font-display">{user.nome}</span>
+            <Button variant="ghost" size="icon" onClick={logout} title="Sair">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </nav>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/historico" element={<History />} />
+        <Route path="/insights" element={<Insights />} />
+        <Route path="/explorar" element={<Explore />} />
+        <Route path="/adicionar" element={<AddBook />} />
+        <Route path="/perfil" element={<Profile />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
+}
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <AuthProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

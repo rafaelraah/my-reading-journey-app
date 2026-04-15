@@ -1,16 +1,13 @@
-import { BookForm } from '@/components/BookForm';
 import { KanbanBoard } from '@/components/KanbanBoard';
 import { FilterBar } from '@/components/FilterBar';
-import { useBooks } from '@/hooks/useBooks';
+import { useUserBooks } from '@/hooks/useUserBooks';
 import { Library, Loader2 } from 'lucide-react';
 
 const Index = () => {
   const {
     books,
     loading,
-    addBook,
     updateStatus,
-    uploadCover,
     getBooksByStatus,
     saveReview,
     deleteBook,
@@ -18,11 +15,10 @@ const Index = () => {
     setFilter,
     sortBy,
     setSortBy,
-  } = useBooks();
+  } = useUserBooks();
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="parchment-bg border-b border-border">
         <div className="container max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-center gap-3">
@@ -40,12 +36,6 @@ const Index = () => {
       </header>
 
       <main className="container max-w-7xl mx-auto px-4 py-8 space-y-8">
-        {/* Book Form */}
-        <section className="animate-fade-in">
-          <BookForm onSubmit={addBook} onUploadCover={uploadCover} />
-        </section>
-
-        {/* Filters */}
         <section className="flex items-center justify-between flex-wrap gap-4">
           <h2 className="text-2xl font-display font-semibold text-foreground">
             Sua Estante
@@ -58,7 +48,6 @@ const Index = () => {
           />
         </section>
 
-        {/* Kanban */}
         {loading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-accent" />
