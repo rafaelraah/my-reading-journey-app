@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGlobalBooks } from '@/hooks/useGlobalBooks';
-import { useUserProfile } from '@/hooks/useUserProfile';
+import { useUserBooks } from '@/hooks/useUserBooks';
+import { useAuth } from '@/contexts/AuthContext';
 import { CATEGORIES } from '@/types/book';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,10 +14,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { BookOpen, Search, Loader2, Users, Star, Share2, Plus } from 'lucide-react';
+import { ReviewModal } from '@/components/ReviewModal';
+import { BookOpen, Search, Loader2, Users, Star, Share2, Plus, CheckCircle } from 'lucide-react';
 import { StarRating } from '@/components/StarRating';
 import { GlobalBook } from '@/hooks/useGlobalBooks';
-import { useEffect } from 'react';
+import { Book } from '@/types/book';
 
 const Explore = () => {
   const {
@@ -26,14 +28,15 @@ const Explore = () => {
     setSearch,
     categoryFilter,
     setCategoryFilter,
-    addBookToUser,
     getBookStats,
   } = useGlobalBooks();
-  const { profile } = useUserProfile();
+  const { user } = useAuth();
+  const { addBookToShelf, isBookInShelf, saveReview, fetchBooks } = useUserBooks();
 
   const [selectedBook, setSelectedBook] = useState<GlobalBook | null>(null);
   const [bookStats, setBookStats] = useState<{ avgRating: number; totalReaders: number } | null>(null);
   const [addingStatus, setAddingStatus] = useState<string | null>(null);
+  const [reviewBook, setReviewBook] = useState<Book | null>(null);
 
   useEffect(() => {
     if (selectedBook) {
@@ -44,10 +47,32 @@ const Explore = () => {
   }, [selectedBook, getBookStats]);
 
   const handleAddToProfile = async (status: string) => {
-    if (!profile || !selectedBook) return;
+    if (!user || !selectedBook) return;
     setAddingStatus(status);
-    await addBookToUser(profile.id, selectedBook.id, status);
+    const success = await addBookToShelf(selectedBook.id, status as Book['status']);
     setAddingStatus(null);
+
+    if (success && status === 'lido') {
+      // Open review modal
+      setReviewBook({
+        id: selectedBook.id,
+        titulo: selectedBook.titulo,
+        autor: selectedBook.autor,
+        paginas: selectedBook.paginas,
+        categoria: selectedBook.categoria,
+        imagem_url: selectedBook.imagem_url,
+        status: 'lido',
+        rating: null,
+        review: null,
+        created_at: selectedBook.created_at,
+      });
+      setSelectedBook(null);
+    }
+  };
+
+  const handleSaveReview = async (id: string, rating: number, review: string) => {
+    await saveReview(id, rating, review);
+    setReviewBook(null);
   };
 
   const handleShare = (book: GlobalBook) => {
@@ -55,6 +80,8 @@ const Explore = () => {
     const msg = encodeURIComponent(`📚 Confira o livro "${book.titulo}" de ${book.autor}! Recomendo muito. Venha ver: ${url}`);
     window.open(`https://wa.me/?text=${msg}`, '_blank');
   };
+
+  const alreadyInShelf = selectedBook ? isBookInShelf(selectedBook.id) : false;
 
   return (
     <div className="min-h-screen bg-background">
@@ -71,7 +98,6 @@ const Explore = () => {
       </header>
 
       <main className="container max-w-6xl mx-auto px-4 py-8 space-y-6">
-        {/* Search & Filter */}
         <div className="flex flex-wrap gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -95,7 +121,6 @@ const Explore = () => {
           </Select>
         </div>
 
-        {/* Grid */}
         {loading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-accent" />
@@ -104,28 +129,36 @@ const Explore = () => {
           <p className="text-center text-muted-foreground py-20">Nenhum livro encontrado na biblioteca global.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {globalBooks.map(book => (
-              <Card
-                key={book.id}
-                className="overflow-hidden hover:shadow-lg transition-all cursor-pointer hover:-translate-y-1 duration-200"
-                onClick={() => setSelectedBook(book)}
-              >
-                <div className="aspect-[2/3] bg-muted flex items-center justify-center overflow-hidden">
-                  {book.imagem_url ? (
-                    <img src={book.imagem_url} alt={book.titulo} className="w-full h-full object-cover" />
-                  ) : (
-                    <BookOpen className="h-10 w-10 text-muted-foreground/40" />
-                  )}
-                </div>
-                <CardContent className="p-3">
-                  <p className="font-display text-sm font-semibold leading-tight truncate">{book.titulo}</p>
-                  <p className="text-xs text-muted-foreground truncate">{book.autor}</p>
-                  <span className="text-xs px-2 py-0.5 mt-1 inline-block rounded-full bg-accent/20 text-accent font-display">
-                    {book.categoria}
-                  </span>
-                </CardContent>
-              </Card>
-            ))}
+            {globalBooks.map(book => {
+              const inShelf = isBookInShelf(book.id);
+              return (
+                <Card
+                  key={book.id}
+                  className={`overflow-hidden hover:shadow-lg transition-all cursor-pointer hover:-translate-y-1 duration-200 ${inShelf ? 'ring-2 ring-accent/50' : ''}`}
+                  onClick={() => setSelectedBook(book)}
+                >
+                  <div className="aspect-[2/3] bg-muted flex items-center justify-center overflow-hidden relative">
+                    {book.imagem_url ? (
+                      <img src={book.imagem_url} alt={book.titulo} className="w-full h-full object-cover" />
+                    ) : (
+                      <BookOpen className="h-10 w-10 text-muted-foreground/40" />
+                    )}
+                    {inShelf && (
+                      <div className="absolute top-2 right-2 bg-accent text-accent-foreground rounded-full p-1">
+                        <CheckCircle className="h-4 w-4" />
+                      </div>
+                    )}
+                  </div>
+                  <CardContent className="p-3">
+                    <p className="font-display text-sm font-semibold leading-tight truncate">{book.titulo}</p>
+                    <p className="text-xs text-muted-foreground truncate">{book.autor}</p>
+                    <span className="text-xs px-2 py-0.5 mt-1 inline-block rounded-full bg-accent/20 text-accent font-display">
+                      {book.categoria}
+                    </span>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>
@@ -177,26 +210,35 @@ const Explore = () => {
 
               {/* Actions */}
               <div className="mt-4 space-y-3">
-                <h4 className="font-display text-sm font-semibold">Adicionar ao meu perfil</h4>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { status: 'quero_ler', label: 'Quero Ler' },
-                    { status: 'lendo', label: 'Estou Lendo' },
-                    { status: 'lido', label: 'Já Li' },
-                  ].map(opt => (
-                    <Button
-                      key={opt.status}
-                      variant="outline"
-                      size="sm"
-                      disabled={!!addingStatus}
-                      onClick={() => handleAddToProfile(opt.status)}
-                      className="font-display"
-                    >
-                      {addingStatus === opt.status ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
-                      {opt.label}
-                    </Button>
-                  ))}
-                </div>
+                {alreadyInShelf ? (
+                  <div className="flex items-center gap-2 text-accent font-display text-sm">
+                    <CheckCircle className="h-4 w-4" />
+                    Já adicionado à sua estante
+                  </div>
+                ) : (
+                  <>
+                    <h4 className="font-display text-sm font-semibold">Adicionar ao meu perfil</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { status: 'quero_ler', label: 'Quero Ler' },
+                        { status: 'lendo', label: 'Estou Lendo' },
+                        { status: 'lido', label: 'Já Li' },
+                      ].map(opt => (
+                        <Button
+                          key={opt.status}
+                          variant="outline"
+                          size="sm"
+                          disabled={!!addingStatus}
+                          onClick={() => handleAddToProfile(opt.status)}
+                          className="font-display"
+                        >
+                          {addingStatus === opt.status ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
+                          {opt.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </>
+                )}
 
                 <Button variant="outline" size="sm" onClick={() => handleShare(selectedBook)} className="font-display">
                   <Share2 className="h-4 w-4 mr-2" />
@@ -207,6 +249,13 @@ const Explore = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <ReviewModal
+        book={reviewBook}
+        open={!!reviewBook}
+        onClose={() => setReviewBook(null)}
+        onSave={handleSaveReview}
+      />
     </div>
   );
 };

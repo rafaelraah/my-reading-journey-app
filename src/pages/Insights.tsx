@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Book } from '@/types/book';
+import { useUserBooks } from '@/hooks/useUserBooks';
 import { BookEvent } from '@/hooks/useBookEvents';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, BookOpen, TrendingUp, Star, Brain, Timer, Flame } from 'lucide-react';
@@ -13,24 +13,18 @@ interface MonthlyCount {
 }
 
 const Insights = () => {
-  const [books, setBooks] = useState<Book[]>([]);
+  const { books, loading: booksLoading } = useUserBooks();
   const [events, setEvents] = useState<BookEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
-      const [booksRes, eventsRes] = await Promise.all([
-        supabase.from('livros').select('*'),
-        supabase.from('livro_eventos').select('*').order('created_at', { ascending: false }),
-      ]);
-      setBooks((booksRes.data as Book[]) || []);
-      setEvents((eventsRes.data as BookEvent[]) || []);
+    supabase.from('livro_eventos').select('*').order('created_at', { ascending: false }).then(({ data }) => {
+      setEvents((data as BookEvent[]) || []);
       setLoading(false);
-    };
-    load();
+    });
   }, []);
 
-  if (loading) {
+  if (loading || booksLoading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-accent" />
@@ -44,23 +38,26 @@ const Insights = () => {
     ? (ratedBooks.reduce((s, b) => s + (b.rating || 0), 0) / ratedBooks.length).toFixed(1)
     : '—';
 
-  // Books read this month
   const now = new Date();
   const thisMonthStart = startOfMonth(now);
   const thisMonthEnd = endOfMonth(now);
-  const movedToReadThisMonth = events.filter(e => {
+
+  // Filter events for user's books
+  const userBookIds = new Set(books.map(b => b.id));
+  const userEvents = events.filter(e => userBookIds.has(e.livro_id));
+
+  const movedToReadThisMonth = userEvents.filter(e => {
     if (e.tipo !== 'moved' || !e.descricao.includes('Já Li')) return false;
     const d = new Date(e.created_at);
     return d >= thisMonthStart && d <= thisMonthEnd;
   });
 
-  // Books per month (last 6)
   const monthlyData: MonthlyCount[] = [];
   for (let i = 5; i >= 0; i--) {
     const m = subMonths(now, i);
     const mStart = startOfMonth(m);
     const mEnd = endOfMonth(m);
-    const count = events.filter(e => {
+    const count = userEvents.filter(e => {
       if (e.tipo !== 'moved' || !e.descricao.includes('Já Li')) return false;
       const d = new Date(e.created_at);
       return d >= mStart && d <= mEnd;
@@ -69,22 +66,17 @@ const Insights = () => {
   }
   const maxMonthly = Math.max(...monthlyData.map(m => m.count), 1);
 
-  // Most read category
   const catCount: Record<string, number> = {};
-  readBooks.forEach(b => {
-    catCount[b.categoria] = (catCount[b.categoria] || 0) + 1;
-  });
+  readBooks.forEach(b => { catCount[b.categoria] = (catCount[b.categoria] || 0) + 1; });
   const topCategory = Object.entries(catCount).sort((a, b) => b[1] - a[1])[0];
 
-  // Reading frequency (events in last 30 days)
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const recentEvents = events.filter(e => new Date(e.created_at) >= thirtyDaysAgo);
+  const recentEvents = userEvents.filter(e => new Date(e.created_at) >= thirtyDaysAgo);
 
-  // Average time to finish (from created to moved to 'Já Li')
   const finishTimes: number[] = [];
   readBooks.forEach(book => {
-    const createdEvent = events.find(e => e.livro_id === book.id && e.tipo === 'created');
-    const finishedEvent = events.find(e => e.livro_id === book.id && e.tipo === 'moved' && e.descricao.includes('Já Li'));
+    const createdEvent = userEvents.find(e => e.livro_id === book.id && e.tipo === 'created');
+    const finishedEvent = userEvents.find(e => e.livro_id === book.id && e.tipo === 'moved' && e.descricao.includes('Já Li'));
     if (createdEvent && finishedEvent) {
       const diff = new Date(finishedEvent.created_at).getTime() - new Date(createdEvent.created_at).getTime();
       finishTimes.push(diff / (1000 * 60 * 60 * 24));
@@ -95,56 +87,12 @@ const Insights = () => {
     : null;
 
   const insights = [
-    {
-      icon: BookOpen,
-      color: 'text-green-600 bg-green-100',
-      title: 'Livros lidos este mês',
-      value: movedToReadThisMonth.length.toString(),
-      subtitle: movedToReadThisMonth.length === 1
-        ? 'Você leu 1 livro este mês'
-        : `Você leu ${movedToReadThisMonth.length} livros este mês`,
-    },
-    {
-      icon: Star,
-      color: 'text-yellow-600 bg-yellow-100',
-      title: 'Média de avaliações',
-      value: avgRating,
-      subtitle: ratedBooks.length > 0
-        ? `Baseado em ${ratedBooks.length} avaliações`
-        : 'Nenhuma avaliação ainda',
-    },
-    {
-      icon: Brain,
-      color: 'text-purple-600 bg-purple-100',
-      title: 'Categoria favorita',
-      value: topCategory ? topCategory[0] : '—',
-      subtitle: topCategory
-        ? `${topCategory[0]} é sua categoria favorita com ${topCategory[1]} livros`
-        : 'Leia mais livros para descobrir',
-    },
-    {
-      icon: Timer,
-      color: 'text-blue-600 bg-blue-100',
-      title: 'Tempo médio por livro',
-      value: avgFinishDays ? `${avgFinishDays}d` : '—',
-      subtitle: avgFinishDays
-        ? `Em média, você leva ${avgFinishDays} dias para finalizar`
-        : 'Dados insuficientes',
-    },
-    {
-      icon: Flame,
-      color: 'text-red-600 bg-red-100',
-      title: 'Frequência de leitura',
-      value: recentEvents.length.toString(),
-      subtitle: `${recentEvents.length} atividades nos últimos 30 dias`,
-    },
-    {
-      icon: TrendingUp,
-      color: 'text-emerald-600 bg-emerald-100',
-      title: 'Total de livros lidos',
-      value: readBooks.length.toString(),
-      subtitle: `${books.length} livros na estante`,
-    },
+    { icon: BookOpen, color: 'text-green-600 bg-green-100', title: 'Livros lidos este mês', value: movedToReadThisMonth.length.toString(), subtitle: `Você leu ${movedToReadThisMonth.length} livro(s) este mês` },
+    { icon: Star, color: 'text-yellow-600 bg-yellow-100', title: 'Média de avaliações', value: avgRating, subtitle: ratedBooks.length > 0 ? `Baseado em ${ratedBooks.length} avaliações` : 'Nenhuma avaliação ainda' },
+    { icon: Brain, color: 'text-purple-600 bg-purple-100', title: 'Categoria favorita', value: topCategory ? topCategory[0] : '—', subtitle: topCategory ? `${topCategory[0]} com ${topCategory[1]} livros` : 'Leia mais livros para descobrir' },
+    { icon: Timer, color: 'text-blue-600 bg-blue-100', title: 'Tempo médio por livro', value: avgFinishDays ? `${avgFinishDays}d` : '—', subtitle: avgFinishDays ? `Em média ${avgFinishDays} dias` : 'Dados insuficientes' },
+    { icon: Flame, color: 'text-red-600 bg-red-100', title: 'Frequência de leitura', value: recentEvents.length.toString(), subtitle: `${recentEvents.length} atividades nos últimos 30 dias` },
+    { icon: TrendingUp, color: 'text-emerald-600 bg-emerald-100', title: 'Total de livros lidos', value: readBooks.length.toString(), subtitle: `${books.length} livros na estante` },
   ];
 
   return (
@@ -162,7 +110,6 @@ const Insights = () => {
       </header>
 
       <main className="container max-w-5xl mx-auto px-4 py-8 space-y-8">
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {insights.map((insight, i) => {
             const Icon = insight.icon;
@@ -185,7 +132,6 @@ const Insights = () => {
           })}
         </div>
 
-        {/* Monthly Chart */}
         <Card>
           <CardContent className="p-6">
             <h3 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -196,10 +142,7 @@ const Insights = () => {
               {monthlyData.map((m, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1">
                   <span className="text-sm font-bold text-foreground">{m.count}</span>
-                  <div
-                    className="w-full rounded-t-md bg-accent/80 transition-all duration-500"
-                    style={{ height: `${(m.count / maxMonthly) * 100}%`, minHeight: m.count > 0 ? '8px' : '2px' }}
-                  />
+                  <div className="w-full rounded-t-md bg-accent/80 transition-all duration-500" style={{ height: `${(m.count / maxMonthly) * 100}%`, minHeight: m.count > 0 ? '8px' : '2px' }} />
                   <span className="text-xs text-muted-foreground font-display capitalize">{m.month}</span>
                 </div>
               ))}
@@ -207,28 +150,20 @@ const Insights = () => {
           </CardContent>
         </Card>
 
-        {/* Category Distribution */}
         {Object.keys(catCount).length > 0 && (
           <Card>
             <CardContent className="p-6">
-              <h3 className="font-display text-lg font-semibold text-foreground mb-4">
-                Distribuição por categoria
-              </h3>
+              <h3 className="font-display text-lg font-semibold text-foreground mb-4">Distribuição por categoria</h3>
               <div className="space-y-3">
-                {Object.entries(catCount)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([cat, count]) => (
-                    <div key={cat} className="flex items-center gap-3">
-                      <span className="text-sm font-display w-40 truncate">{cat}</span>
-                      <div className="flex-1 bg-secondary rounded-full h-3 overflow-hidden">
-                        <div
-                          className="h-full bg-accent rounded-full transition-all duration-500"
-                          style={{ width: `${(count / readBooks.length) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-sm text-muted-foreground w-8 text-right">{count}</span>
+                {Object.entries(catCount).sort((a, b) => b[1] - a[1]).map(([cat, count]) => (
+                  <div key={cat} className="flex items-center gap-3">
+                    <span className="text-sm font-display w-40 truncate">{cat}</span>
+                    <div className="flex-1 bg-secondary rounded-full h-3 overflow-hidden">
+                      <div className="h-full bg-accent rounded-full transition-all duration-500" style={{ width: `${(count / readBooks.length) * 100}%` }} />
                     </div>
-                  ))}
+                    <span className="text-sm text-muted-foreground w-8 text-right">{count}</span>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>

@@ -1,14 +1,20 @@
 import { useState, useRef } from 'react';
 import { CATEGORIES } from '@/types/book';
 import { useGlobalBooks } from '@/hooks/useGlobalBooks';
+import { useUserBooks } from '@/hooks/useUserBooks';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ImageCropper } from '@/components/ImageCropper';
+import { compressImage } from '@/lib/imageUtils';
 import { BookOpen, Upload, Loader2, PlusCircle } from 'lucide-react';
 
 const AddBook = () => {
   const { addGlobalBook, uploadCover } = useGlobalBooks();
+  const { addBookToShelf } = useUserBooks();
+  const { user } = useAuth();
   const [titulo, setTitulo] = useState('');
   const [autor, setAutor] = useState('');
   const [paginas, setPaginas] = useState('');
@@ -16,14 +22,22 @@ const AddBook = () => {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [rawFile, setRawFile] = useState<File | null>(null);
+  const [showCropper, setShowCropper] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setCoverFile(file);
-      setCoverPreview(URL.createObjectURL(file));
+      setRawFile(file);
+      setShowCropper(true);
     }
+  };
+
+  const handleCropped = async (croppedFile: File) => {
+    const compressed = await compressImage(croppedFile);
+    setCoverFile(compressed);
+    setCoverPreview(URL.createObjectURL(compressed));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,7 +58,23 @@ const AddBook = () => {
       imagem_url,
     });
 
-    if (success) {
+    if (success && user) {
+      // Auto-add to creator's shelf
+      // We need the ID of the just-created book. Re-fetch to get it.
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('livros_globais')
+        .select('id')
+        .eq('titulo', titulo)
+        .eq('autor', autor)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (data) {
+        await addBookToShelf(data.id, 'quero_ler');
+      }
+
       setTitulo('');
       setAutor('');
       setPaginas('');
@@ -107,12 +137,12 @@ const AddBook = () => {
               onClick={() => fileRef.current?.click()}
             >
               {coverPreview ? (
-                <img src={coverPreview} alt="Preview" className="h-10 w-8 rounded object-cover" />
+                <img src={coverPreview} alt="Preview" className="h-16 w-12 rounded object-cover" />
               ) : (
                 <Upload className="h-5 w-5 text-muted-foreground" />
               )}
               <span className="text-sm text-muted-foreground truncate">
-                {coverFile ? coverFile.name : 'Escolher imagem...'}
+                {coverFile ? 'Imagem recortada e comprimida' : 'Escolher imagem...'}
               </span>
             </div>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
@@ -128,6 +158,14 @@ const AddBook = () => {
           </Button>
         </form>
       </main>
+
+      <ImageCropper
+        file={rawFile}
+        open={showCropper}
+        onClose={() => setShowCropper(false)}
+        onCropped={handleCropped}
+        aspect={2 / 3}
+      />
     </div>
   );
 };
