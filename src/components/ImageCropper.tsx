@@ -27,11 +27,15 @@ export function ImageCropper({ file, open, onClose, onCropped, aspect = 2 / 3 }:
   const imgRef = useRef<HTMLImageElement>(null);
   const [imgSrc, setImgSrc] = useState('');
 
-  useState(() => {
+  useEffect(() => {
     if (file) {
-      setImgSrc(URL.createObjectURL(file));
+      const url = URL.createObjectURL(file);
+      setImgSrc(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setImgSrc('');
     }
-  });
+  }, [file]);
 
   const onImageLoad = useCallback(
     (e: React.SyntheticEvent<HTMLImageElement>) => {
