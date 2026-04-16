@@ -115,6 +115,77 @@ export type Database = {
         }
         Relationships: []
       }
+      notificacoes: {
+        Row: {
+          created_at: string
+          id: string
+          lido: boolean
+          mensagem: string
+          tipo: string
+          usuario_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lido?: boolean
+          mensagem: string
+          tipo: string
+          usuario_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lido?: boolean
+          mensagem?: string
+          tipo?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seguidores: {
+        Row: {
+          created_at: string
+          id: string
+          seguido_id: string
+          seguidor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          seguido_id: string
+          seguidor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          seguido_id?: string
+          seguidor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seguidores_seguido_id_fkey"
+            columns: ["seguido_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seguidores_seguidor_id_fkey"
+            columns: ["seguidor_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       usuario_livros: {
         Row: {
           created_at: string
