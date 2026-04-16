@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { Button } from '@/components/ui/button';
@@ -27,11 +27,15 @@ export function ImageCropper({ file, open, onClose, onCropped, aspect = 2 / 3 }:
   const imgRef = useRef<HTMLImageElement>(null);
   const [imgSrc, setImgSrc] = useState('');
 
-  useState(() => {
+  useEffect(() => {
     if (file) {
-      setImgSrc(URL.createObjectURL(file));
+      const url = URL.createObjectURL(file);
+      setImgSrc(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setImgSrc('');
     }
-  });
+  }, [file]);
 
   const onImageLoad = useCallback(
     (e: React.SyntheticEvent<HTMLImageElement>) => {
