@@ -1,18 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocial } from '@/hooks/useSocial';
+import { useBookEvents, BookEvent } from '@/hooks/useBookEvents';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { StarRating } from '@/components/StarRating';
 import { EventTimeline } from '@/components/EventTimeline';
+import { ProfileStatsModal, StatsModalKind, favoriteGenre } from '@/components/ProfileStatsModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { User, BookOpen, Loader2, Star, Clock, BarChart3 } from 'lucide-react';
+import { User, BookOpen, Loader2, Star, Clock, BarChart3, Sparkles } from 'lucide-react';
 import { Book } from '@/types/book';
-import { BookEvent } from '@/hooks/useBookEvents';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -20,10 +22,13 @@ interface ProfileBook extends Book {
   user_book_id: string;
 }
 
+interface UserLite { id: string; nome: string; username: string | null; avatar_url: string | null; }
+
 const PublicProfile = () => {
   const { id } = useParams<{ id: string }>();
   const { user: me } = useAuth();
-  const { following, followUser, unfollowUser, getFollowCounts } = useSocial();
+  const { following, followUser, unfollowUser, getFollowCounts, getFollowersList, getFollowingList } = useSocial();
+  const { fetchUserEvents } = useBookEvents();
 
   const [profile, setProfile] = useState<{ id: string; nome: string; username: string | null; avatar_url: string | null } | null>(null);
   const [books, setBooks] = useState<ProfileBook[]>([]);
@@ -32,59 +37,57 @@ const PublicProfile = () => {
   const [loading, setLoading] = useState(true);
   const [selectedBook, setSelectedBook] = useState<ProfileBook | null>(null);
 
-  useEffect(() => {
+  const [statsModal, setStatsModal] = useState<StatsModalKind>(null);
+  const [followersList, setFollowersList] = useState<UserLite[]>([]);
+  const [followingList, setFollowingList] = useState<UserLite[]>([]);
+
+  const load = useCallback(async () => {
     if (!id) return;
+    setLoading(true);
 
-    const load = async () => {
-      setLoading(true);
+    const [{ data: userData }, { data: booksData }, followCounts, userEvents] = await Promise.all([
+      supabase.from('usuarios').select('id, nome, username, avatar_url').eq('id', id).single(),
+      supabase.from('usuario_livros').select('*, livros_globais(*)').eq('usuario_id', id),
+      getFollowCounts(id),
+      fetchUserEvents(id),
+    ]);
 
-      const [{ data: userData }, { data: booksData }, followCounts] = await Promise.all([
-        supabase.from('usuarios').select('id, nome, username, avatar_url').eq('id', id).single(),
-        supabase.from('usuario_livros').select('*, livros_globais(*)').eq('usuario_id', id),
-        getFollowCounts(id),
-      ]);
+    if (userData) setProfile(userData as any);
+    setCounts(followCounts);
+    setEvents(userEvents);
 
-      if (userData) setProfile(userData as any);
-      setCounts(followCounts);
-
-      const mappedBooks: ProfileBook[] = [];
-      if (booksData) {
-        for (const ub of booksData as any[]) {
-          const gb = ub.livros_globais;
-          mappedBooks.push({
-            id: gb.id,
-            user_book_id: ub.id,
-            titulo: gb.titulo,
-            autor: gb.autor,
-            paginas: gb.paginas,
-            categoria: gb.categoria,
-            imagem_url: gb.imagem_url,
-            status: ub.status,
-            rating: ub.rating,
-            review: ub.review,
-            created_at: ub.created_at,
-          });
-        }
+    const mappedBooks: ProfileBook[] = [];
+    if (booksData) {
+      for (const ub of booksData as any[]) {
+        const gb = ub.livros_globais;
+        if (!gb) continue;
+        mappedBooks.push({
+          id: gb.id,
+          user_book_id: ub.id,
+          titulo: gb.titulo,
+          autor: gb.autor,
+          paginas: gb.paginas,
+          categoria: gb.categoria,
+          imagem_url: gb.imagem_url,
+          status: ub.status,
+          rating: ub.rating,
+          review: ub.review,
+          created_at: ub.created_at,
+        });
       }
-      setBooks(mappedBooks);
+    }
+    setBooks(mappedBooks);
+    setLoading(false);
+  }, [id, getFollowCounts, fetchUserEvents]);
 
-      // Fetch events for all of this user's books
-      const bookIds = mappedBooks.map(b => b.id);
-      if (bookIds.length > 0) {
-        const { data: eventsData } = await supabase
-          .from('livro_eventos')
-          .select('*')
-          .in('livro_id', bookIds)
-          .order('created_at', { ascending: false })
-          .limit(50);
-        setEvents((eventsData as BookEvent[]) || []);
-      }
+  useEffect(() => { load(); }, [load]);
 
-      setLoading(false);
-    };
-
-    load();
-  }, [id, getFollowCounts]);
+  const openStats = async (kind: NonNullable<StatsModalKind>) => {
+    if (!id) return;
+    if (kind === 'seguidores') setFollowersList(await getFollowersList(id));
+    if (kind === 'seguindo') setFollowingList(await getFollowingList(id));
+    setStatsModal(kind);
+  };
 
   if (loading) {
     return (
@@ -106,8 +109,21 @@ const PublicProfile = () => {
   const isFollowing = following.has(profile.id);
   const readBooks = books.filter(b => b.status === 'lido');
   const readingBooks = books.filter(b => b.status === 'lendo');
-  const wantBooks = books.filter(b => b.status === 'quero_ler');
   const ratedBooks = books.filter(b => b.rating && b.rating > 0);
+  const favGenre = favoriteGenre(books);
+  const usernameLabel = profile.username || profile.nome;
+
+  const stat = (label: string, value: number | string, kind: NonNullable<StatsModalKind> | null) => (
+    <button
+      type="button"
+      disabled={!kind}
+      onClick={() => kind && openStats(kind)}
+      className={`text-center px-2 py-1 rounded-md transition-colors ${kind ? 'cursor-pointer hover:bg-accent/10 active:bg-accent/20' : ''}`}
+    >
+      <p className="text-2xl font-bold text-foreground">{value}</p>
+      <p className="text-sm text-muted-foreground">{label}</p>
+    </button>
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -126,37 +142,31 @@ const PublicProfile = () => {
               <h1 className="text-3xl font-display font-bold text-foreground">{profile.nome}</h1>
               {profile.username && <p className="text-sm text-muted-foreground mt-1">@{profile.username}</p>}
 
-              <div className="flex gap-6 mt-4 justify-center sm:justify-start">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">{readBooks.length}</p>
-                  <p className="text-sm text-muted-foreground">Lidos</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">{readingBooks.length}</p>
-                  <p className="text-sm text-muted-foreground">Lendo</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">{ratedBooks.length}</p>
-                  <p className="text-sm text-muted-foreground">Avaliações</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">{counts.followers}</p>
-                  <p className="text-sm text-muted-foreground">Seguidores</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">{counts.following}</p>
-                  <p className="text-sm text-muted-foreground">Seguindo</p>
-                </div>
+              <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
+                {stat('Lidos', readBooks.length, 'lidos')}
+                {stat('Lendo', readingBooks.length, 'lendo')}
+                {stat('Avaliações', ratedBooks.length, 'avaliacoes')}
+                {stat('Seguidores', counts.followers, 'seguidores')}
+                {stat('Seguindo', counts.following, 'seguindo')}
               </div>
+
+              {favGenre && (
+                <div className="mt-3 flex items-center gap-2 justify-center sm:justify-start">
+                  <Sparkles className="h-4 w-4 text-accent" />
+                  <Badge variant="secondary" className="font-display">
+                    Gênero Favorito do Usuário: {favGenre}
+                  </Badge>
+                </div>
+              )}
 
               {!isMe && (
                 <div className="mt-4">
                   {isFollowing ? (
-                    <Button variant="secondary" onClick={() => unfollowUser(profile.id)} className="font-display">
+                    <Button variant="secondary" onClick={async () => { await unfollowUser(profile.id); setCounts(await getFollowCounts(profile.id)); }} className="font-display">
                       Seguindo
                     </Button>
                   ) : (
-                    <Button onClick={() => followUser(profile.id, profile.username || profile.nome)} className="bg-primary text-primary-foreground font-display">
+                    <Button onClick={async () => { await followUser(profile.id, profile.username || profile.nome); setCounts(await getFollowCounts(profile.id)); }} className="bg-primary text-primary-foreground font-display">
                       Seguir
                     </Button>
                   )}
@@ -177,12 +187,10 @@ const PublicProfile = () => {
             <TabsTrigger value="activity" className="flex items-center gap-1.5 text-sm"><Clock className="h-4 w-4" /> Atividade</TabsTrigger>
           </TabsList>
 
-          {/* Dashboard */}
           <TabsContent value="dashboard">
             <PublicDashboard books={books} events={events} />
           </TabsContent>
 
-          {/* Books */}
           <TabsContent value="books">
             {books.length === 0 ? (
               <p className="text-center text-muted-foreground py-10">Nenhum livro na estante.</p>
@@ -212,7 +220,6 @@ const PublicProfile = () => {
             )}
           </TabsContent>
 
-          {/* Ratings */}
           <TabsContent value="ratings">
             {ratedBooks.length === 0 ? (
               <p className="text-center text-muted-foreground py-10">Nenhuma avaliação feita ainda.</p>
@@ -241,16 +248,29 @@ const PublicProfile = () => {
             )}
           </TabsContent>
 
-          {/* Activity */}
           <TabsContent value="activity">
             {events.length === 0 ? (
               <p className="text-center text-muted-foreground py-10">Nenhuma atividade registrada.</p>
             ) : (
-              <EventTimeline events={events.slice(0, 30)} showBookTitle />
+              <EventTimeline events={events} showBookTitle />
             )}
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Stats Modal */}
+      <ProfileStatsModal
+        kind={statsModal}
+        username={usernameLabel}
+        books={
+          statsModal === 'lidos' ? readBooks :
+          statsModal === 'lendo' ? readingBooks :
+          statsModal === 'avaliacoes' ? ratedBooks : []
+        }
+        users={statsModal === 'seguidores' ? followersList : statsModal === 'seguindo' ? followingList : []}
+        onClose={() => setStatsModal(null)}
+        onBookClick={(b) => { setSelectedBook(b as ProfileBook); setStatsModal(null); }}
+      />
 
       {/* Book Detail Modal */}
       <Dialog open={!!selectedBook} onOpenChange={open => !open && setSelectedBook(null)}>
@@ -296,7 +316,7 @@ const PublicProfile = () => {
   );
 };
 
-/* ── Dashboard Component ── */
+/* ── Dashboard ── */
 
 function PublicDashboard({ books, events }: { books: ProfileBook[]; events: BookEvent[] }) {
   const readBooks = books.filter(b => b.status === 'lido');
@@ -329,7 +349,6 @@ function PublicDashboard({ books, events }: { books: ProfileBook[]; events: Book
 
   return (
     <div className="space-y-6">
-      {/* Stats cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Quero Ler', value: wantBooks.length, color: 'text-blue-600' },
@@ -346,7 +365,6 @@ function PublicDashboard({ books, events }: { books: ProfileBook[]; events: Book
         ))}
       </div>
 
-      {/* Monthly chart */}
       <Card>
         <CardContent className="p-6">
           <h3 className="font-display text-lg font-semibold text-foreground mb-4">Livros lidos por mês</h3>
@@ -362,7 +380,6 @@ function PublicDashboard({ books, events }: { books: ProfileBook[]; events: Book
         </CardContent>
       </Card>
 
-      {/* Category distribution */}
       {Object.keys(catCount).length > 0 && (
         <Card>
           <CardContent className="p-6">
@@ -382,7 +399,6 @@ function PublicDashboard({ books, events }: { books: ProfileBook[]; events: Book
         </Card>
       )}
 
-      {/* Last read */}
       {lastRead.length > 0 && (
         <Card>
           <CardContent className="p-6">

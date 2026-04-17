@@ -1,27 +1,34 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserBooks } from '@/hooks/useUserBooks';
-import { useBookEvents } from '@/hooks/useBookEvents';
+import { useBookEvents, BookEvent } from '@/hooks/useBookEvents';
+import { useSocial } from '@/hooks/useSocial';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StarRating } from '@/components/StarRating';
 import { EventTimeline } from '@/components/EventTimeline';
 import { ImageCropper } from '@/components/ImageCropper';
+import { ProfileStatsModal, StatsModalKind, favoriteGenre } from '@/components/ProfileStatsModal';
 import { compressImage } from '@/lib/imageUtils';
-import { BookOpen, Star, Clock, Settings, Camera, Pencil, Check, X, Loader2, User, BarChart3 } from 'lucide-react';
+import { BookOpen, Star, Clock, Settings, Camera, Pencil, Check, X, Loader2, User, BarChart3, Sparkles } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
-import { BookEvent } from '@/hooks/useBookEvents';
+import { Book } from '@/types/book';
 import { toast } from 'sonner';
+
+interface UserLite { id: string; nome: string; username: string | null; avatar_url: string | null; }
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
   const { books: allBooks } = useUserBooks();
-  const { fetchGlobalEvents, globalEvents, loadingGlobal } = useBookEvents();
+  const { fetchUserEvents } = useBookEvents();
+  const { getFollowCounts, getFollowersList, getFollowingList } = useSocial();
 
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(user?.nome || '');
@@ -29,19 +36,43 @@ const Profile = () => {
   const [rawFile, setRawFile] = useState<File | null>(null);
   const [showCropper, setShowCropper] = useState(false);
 
-  useEffect(() => {
-    fetchGlobalEvents();
-  }, [fetchGlobalEvents]);
+  const [events, setEvents] = useState<BookEvent[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [counts, setCounts] = useState({ followers: 0, following: 0 });
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
-  useEffect(() => {
-    if (user) setNameValue(user.nome);
-  }, [user]);
+  const [statsModal, setStatsModal] = useState<StatsModalKind>(null);
+  const [followersList, setFollowersList] = useState<UserLite[]>([]);
+  const [followingList, setFollowingList] = useState<UserLite[]>([]);
+
+  const reload = useCallback(async () => {
+    if (!user) return;
+    setLoadingEvents(true);
+    const [evts, c] = await Promise.all([
+      fetchUserEvents(user.id),
+      getFollowCounts(user.id),
+    ]);
+    setEvents(evts);
+    setCounts(c);
+    setLoadingEvents(false);
+  }, [user, fetchUserEvents, getFollowCounts]);
+
+  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => { if (user) setNameValue(user.nome); }, [user]);
 
   if (!user) return null;
 
   const ratedBooks = allBooks.filter(b => b.rating && b.rating > 0);
   const readBooks = allBooks.filter(b => b.status === 'lido');
   const readingBooks = allBooks.filter(b => b.status === 'lendo');
+  const favGenre = favoriteGenre(allBooks);
+  const usernameLabel = user.username || user.nome;
+
+  const openStats = async (kind: NonNullable<StatsModalKind>) => {
+    if (kind === 'seguidores') setFollowersList(await getFollowersList(user.id));
+    if (kind === 'seguindo') setFollowingList(await getFollowingList(user.id));
+    setStatsModal(kind);
+  };
 
   const handleSaveName = async () => {
     if (!nameValue.trim()) return;
@@ -62,25 +93,18 @@ const Profile = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setRawFile(file);
-      setShowCropper(true);
-    }
+    if (file) { setRawFile(file); setShowCropper(true); }
   };
 
   const handleCroppedAvatar = async (croppedFile: File) => {
     const compressed = await compressImage(croppedFile, { maxWidth: 400, maxHeight: 400 });
-    const ext = 'webp';
-    const fileName = `avatars/${user.id}.${ext}`;
+    const fileName = `avatars/${user.id}.webp`;
 
     const { error: uploadError } = await supabase.storage
       .from('book-covers')
       .upload(fileName, compressed, { upsert: true });
 
-    if (uploadError) {
-      toast.error('Erro ao fazer upload do avatar');
-      return;
-    }
+    if (uploadError) { toast.error('Erro ao fazer upload do avatar'); return; }
 
     const { data } = supabase.storage.from('book-covers').getPublicUrl(fileName);
     const avatar_url = `${data.publicUrl}?t=${Date.now()}`;
@@ -97,6 +121,17 @@ const Profile = () => {
       toast.success('Avatar atualizado!');
     }
   };
+
+  const stat = (label: string, value: number | string, kind: NonNullable<StatsModalKind>) => (
+    <button
+      type="button"
+      onClick={() => openStats(kind)}
+      className="text-center px-2 py-1 rounded-md hover:bg-accent/10 active:bg-accent/20 transition-colors cursor-pointer"
+    >
+      <p className="text-2xl font-bold text-foreground">{value}</p>
+      <p className="text-sm text-muted-foreground">{label}</p>
+    </button>
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -131,20 +166,22 @@ const Profile = () => {
               )}
               <p className="text-sm text-muted-foreground mt-1">@{user.username}</p>
 
-              <div className="flex gap-6 mt-4 justify-center sm:justify-start">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">{readBooks.length}</p>
-                  <p className="text-sm text-muted-foreground">Lidos</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">{readingBooks.length}</p>
-                  <p className="text-sm text-muted-foreground">Lendo</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">{ratedBooks.length}</p>
-                  <p className="text-sm text-muted-foreground">Avaliações</p>
-                </div>
+              <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
+                {stat('Lidos', readBooks.length, 'lidos')}
+                {stat('Lendo', readingBooks.length, 'lendo')}
+                {stat('Avaliações', ratedBooks.length, 'avaliacoes')}
+                {stat('Seguidores', counts.followers, 'seguidores')}
+                {stat('Seguindo', counts.following, 'seguindo')}
               </div>
+
+              {favGenre && (
+                <div className="mt-3 flex items-center gap-2 justify-center sm:justify-start">
+                  <Sparkles className="h-4 w-4 text-accent" />
+                  <Badge variant="secondary" className="font-display">
+                    Gênero Favorito do Usuário: {favGenre}
+                  </Badge>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -161,7 +198,7 @@ const Profile = () => {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <ProfileDashboard books={allBooks} />
+            <ProfileDashboard books={allBooks} events={events} />
           </TabsContent>
 
           <TabsContent value="books">
@@ -170,13 +207,16 @@ const Profile = () => {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {allBooks.map(book => (
-                  <Card key={book.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <Card key={book.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedBook(book)}>
                     <div className="aspect-[2/3] bg-muted flex items-center justify-center overflow-hidden">
                       {book.imagem_url ? <img src={book.imagem_url} alt={book.titulo} className="w-full h-full object-cover" /> : <BookOpen className="h-10 w-10 text-muted-foreground/40" />}
                     </div>
                     <CardContent className="p-3">
                       <p className="font-display text-sm font-semibold leading-tight truncate">{book.titulo}</p>
                       <p className="text-xs text-muted-foreground truncate">{book.autor}</p>
+                      {book.rating && book.rating > 0 && (
+                        <div className="mt-1"><StarRating value={book.rating} readonly size="sm" /></div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -190,7 +230,7 @@ const Profile = () => {
             ) : (
               <div className="space-y-4">
                 {ratedBooks.map(book => (
-                  <Card key={book.id} className="overflow-hidden">
+                  <Card key={book.id} className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedBook(book)}>
                     <CardContent className="p-4 flex gap-4">
                       <div className="w-16 h-24 bg-muted rounded overflow-hidden flex-shrink-0">
                         {book.imagem_url ? <img src={book.imagem_url} alt={book.titulo} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><BookOpen className="h-6 w-6 text-muted-foreground/40" /></div>}
@@ -209,12 +249,12 @@ const Profile = () => {
           </TabsContent>
 
           <TabsContent value="activity">
-            {loadingGlobal ? (
+            {loadingEvents ? (
               <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-accent" /></div>
-            ) : globalEvents.length === 0 ? (
+            ) : events.length === 0 ? (
               <p className="text-center text-muted-foreground py-10">Nenhuma atividade registrada.</p>
             ) : (
-              <EventTimeline events={globalEvents.slice(0, 20)} />
+              <EventTimeline events={events} showBookTitle />
             )}
           </TabsContent>
 
@@ -239,19 +279,62 @@ const Profile = () => {
       </div>
 
       <ImageCropper file={rawFile} open={showCropper} onClose={() => setShowCropper(false)} onCropped={handleCroppedAvatar} aspect={1} />
+
+      {/* Stats Modal */}
+      <ProfileStatsModal
+        kind={statsModal}
+        username={usernameLabel}
+        books={
+          statsModal === 'lidos' ? readBooks :
+          statsModal === 'lendo' ? readingBooks :
+          statsModal === 'avaliacoes' ? ratedBooks : []
+        }
+        users={statsModal === 'seguidores' ? followersList : statsModal === 'seguindo' ? followingList : []}
+        onClose={() => setStatsModal(null)}
+        onBookClick={(b) => { setSelectedBook(b); setStatsModal(null); }}
+      />
+
+      {/* Book Detail Modal */}
+      <Dialog open={!!selectedBook} onOpenChange={open => !open && setSelectedBook(null)}>
+        <DialogContent className="max-w-md">
+          {selectedBook && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-display">{selectedBook.titulo}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="w-24 h-36 bg-muted rounded overflow-hidden flex-shrink-0">
+                    {selectedBook.imagem_url ? <img src={selectedBook.imagem_url} alt={selectedBook.titulo} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><BookOpen className="h-8 w-8 text-muted-foreground/40" /></div>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-muted-foreground">{selectedBook.autor}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{selectedBook.paginas} páginas • {selectedBook.categoria}</p>
+                    {selectedBook.rating && selectedBook.rating > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs font-display font-semibold text-foreground mb-1">Sua avaliação:</p>
+                        <StarRating value={selectedBook.rating} readonly size="md" />
+                        <p className="text-xs text-muted-foreground mt-0.5">{selectedBook.rating}/10</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {selectedBook.review && (
+                  <div className="border-t border-border pt-3">
+                    <p className="text-xs font-display font-semibold text-foreground mb-1">Sua resenha:</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedBook.review}</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
-function ProfileDashboard({ books }: { books: import('@/types/book').Book[] }) {
-  const [allEvents, setAllEvents] = useState<BookEvent[]>([]);
-
-  useEffect(() => {
-    supabase.from('livro_eventos').select('*').order('created_at', { ascending: false }).then(({ data }) => {
-      setAllEvents((data as BookEvent[]) || []);
-    });
-  }, []);
-
+function ProfileDashboard({ books, events }: { books: Book[]; events: BookEvent[] }) {
   const readBooks = books.filter(b => b.status === 'lido');
   const readingBooks = books.filter(b => b.status === 'lendo');
   const wantBooks = books.filter(b => b.status === 'quero_ler');
@@ -264,7 +347,7 @@ function ProfileDashboard({ books }: { books: import('@/types/book').Book[] }) {
     const m = subMonths(now, i);
     const mStart = startOfMonth(m);
     const mEnd = endOfMonth(m);
-    const count = allEvents.filter(e => {
+    const count = events.filter(e => {
       if (e.tipo !== 'moved' || !e.descricao.includes('Já Li')) return false;
       const d = new Date(e.created_at);
       return d >= mStart && d <= mEnd;
