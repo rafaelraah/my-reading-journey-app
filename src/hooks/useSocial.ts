@@ -161,6 +161,24 @@ export function useSocial() {
     return { followers: followers || 0, following: followingCount || 0 };
   }, []);
 
+  // Get list of users that follow `userId` (followers)
+  const getFollowersList = useCallback(async (userId: string) => {
+    const { data } = await supabase
+      .from('seguidores')
+      .select('seguidor_id, usuarios!seguidores_seguidor_id_fkey(id, nome, username, avatar_url)')
+      .eq('seguido_id', userId);
+    return ((data as any[]) || []).map((r) => r.usuarios).filter(Boolean);
+  }, []);
+
+  // Get list of users that `userId` follows (following)
+  const getFollowingList = useCallback(async (userId: string) => {
+    const { data } = await supabase
+      .from('seguidores')
+      .select('seguido_id, usuarios!seguidores_seguido_id_fkey(id, nome, username, avatar_url)')
+      .eq('seguidor_id', userId);
+    return ((data as any[]) || []).map((r) => r.usuarios).filter(Boolean);
+  }, []);
+
   useEffect(() => {
     fetchFollowing();
     fetchNotifications();
@@ -178,5 +196,7 @@ export function useSocial() {
     fetchNotifications,
     markAllRead,
     getFollowCounts,
+    getFollowersList,
+    getFollowingList,
   };
 }
