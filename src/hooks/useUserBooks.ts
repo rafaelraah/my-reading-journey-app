@@ -82,7 +82,7 @@ export function useUserBooks() {
     }
 
     toast.success('Livro adicionado à sua estante!');
-    await logCreated(livroId);
+    await logCreated(livroId, user.id);
     await fetchBooks();
     return true;
   };
@@ -106,7 +106,7 @@ export function useUserBooks() {
       toast.error('Erro ao atualizar status');
       await fetchBooks();
     } else {
-      await logMoved(bookId, status);
+      await logMoved(bookId, status, user.id);
     }
   };
 
@@ -125,8 +125,8 @@ export function useUserBooks() {
       toast.error('Erro ao salvar avaliação');
       await fetchBooks();
     } else {
-      await logRated(bookId, rating);
-      if (review.trim()) await logReviewAdded(bookId);
+      await logRated(bookId, rating, user?.id);
+      if (review.trim()) await logReviewAdded(bookId, user?.id);
     }
   };
 
