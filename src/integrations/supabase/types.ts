@@ -290,7 +290,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      verify_user_credentials: {
+        Args: { p_password: string; p_username: string }
+        Returns: {
+          avatar_url: string
+          id: string
+          nome: string
+          username: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
