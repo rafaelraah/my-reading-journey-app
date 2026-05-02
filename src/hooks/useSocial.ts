@@ -11,6 +11,7 @@ export interface PublicUser {
   quero_ler: number;
   lendo: number;
   lido: number;
+  favorite_genre: string | null;
 }
 
 export interface Notification {
@@ -56,22 +57,42 @@ export function useSocial() {
     const userIds = usersData.map((u: any) => u.id);
     const { data: booksData } = await supabase
       .from('usuario_livros')
-      .select('usuario_id, status')
+      .select('usuario_id, status, livros_globais(categoria)')
       .in('usuario_id', userIds);
 
     const counts: Record<string, { quero_ler: number; lendo: number; lido: number }> = {};
+    const genreCounts: Record<string, Record<string, number>> = {};
+    const genreReadCounts: Record<string, Record<string, number>> = {};
     (booksData || []).forEach((b: any) => {
       if (!counts[b.usuario_id]) counts[b.usuario_id] = { quero_ler: 0, lendo: 0, lido: 0 };
       if (b.status === 'quero_ler') counts[b.usuario_id].quero_ler++;
       else if (b.status === 'lendo') counts[b.usuario_id].lendo++;
       else if (b.status === 'lido') counts[b.usuario_id].lido++;
+      const cat = b.livros_globais?.categoria;
+      if (cat) {
+        if (!genreCounts[b.usuario_id]) genreCounts[b.usuario_id] = {};
+        genreCounts[b.usuario_id][cat] = (genreCounts[b.usuario_id][cat] || 0) + 1;
+        if (b.status === 'lido') {
+          if (!genreReadCounts[b.usuario_id]) genreReadCounts[b.usuario_id] = {};
+          genreReadCounts[b.usuario_id][cat] = (genreReadCounts[b.usuario_id][cat] || 0) + 1;
+        }
+      }
     });
+
+    const pickFavorite = (uid: string): string | null => {
+      const pool = genreReadCounts[uid] && Object.keys(genreReadCounts[uid]).length > 0
+        ? genreReadCounts[uid]
+        : genreCounts[uid];
+      if (!pool) return null;
+      return Object.entries(pool).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    };
 
     const mapped: PublicUser[] = usersData.map((u: any) => ({
       ...u,
       quero_ler: counts[u.id]?.quero_ler || 0,
       lendo: counts[u.id]?.lendo || 0,
       lido: counts[u.id]?.lido || 0,
+      favorite_genre: pickFavorite(u.id),
     }));
 
     setUsers(mapped);

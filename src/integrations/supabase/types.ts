@@ -153,6 +153,27 @@ export type Database = {
           },
         ]
       }
+      posts: {
+        Row: {
+          conteudo: string
+          created_at: string
+          id: string
+          usuario_id: string
+        }
+        Insert: {
+          conteudo: string
+          created_at?: string
+          id?: string
+          usuario_id: string
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string
+          id?: string
+          usuario_id?: string
+        }
+        Relationships: []
+      }
       seguidores: {
         Row: {
           created_at: string

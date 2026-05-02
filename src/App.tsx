@@ -3,11 +3,12 @@ import { BrowserRouter, Route, Routes, NavLink } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Library, ScrollText, User, TrendingUp, Compass, PlusCircle, LogOut, Users, Bell } from "lucide-react";
+import { Library, ScrollText, User, TrendingUp, Compass, PlusCircle, LogOut, Users, Bell, Rss } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useSocial } from "@/hooks/useSocial";
 import Index from "./pages/Index.tsx";
 import History from "./pages/History.tsx";
+import Feed from "./pages/Feed.tsx";
 import Profile from "./pages/Profile.tsx";
 import Insights from "./pages/Insights.tsx";
 import Explore from "./pages/Explore.tsx";
@@ -23,6 +24,7 @@ const queryClient = new QueryClient();
 
 const navItems = [
   { to: "/", label: "Kanban", icon: Library, end: true },
+  { to: "/feed", label: "Feed", icon: Rss },
   { to: "/historico", label: "Histórico", icon: ScrollText },
   { to: "/insights", label: "Insights", icon: TrendingUp },
   { to: "/explorar", label: "Explorar", icon: Compass },
@@ -91,6 +93,7 @@ function AppContent() {
       </nav>
       <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/feed" element={<Feed />} />
         <Route path="/historico" element={<History />} />
         <Route path="/insights" element={<Insights />} />
         <Route path="/explorar" element={<Explore />} />
