@@ -35,27 +35,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
-    const { data, error } = await supabase
-      .from('usuarios')
-      .select('*')
-      .eq('username', username)
-      .single();
+    const { data, error } = await (supabase as any).rpc('verify_user_credentials', {
+      p_username: username,
+      p_password: password,
+    });
 
-    if (error || !data) {
-      toast.error('Usuário não encontrado');
+    if (error) {
+      toast.error('Erro ao fazer login');
       return false;
     }
 
-    if ((data as any).password_hash !== password) {
-      toast.error('Senha incorreta');
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) {
+      toast.error('Usuário ou senha inválidos');
       return false;
     }
 
     const authUser: AuthUser = {
-      id: data.id,
-      username: (data as any).username,
-      nome: data.nome,
-      avatar_url: data.avatar_url,
+      id: row.id,
+      username: row.username,
+      nome: row.nome,
+      avatar_url: row.avatar_url,
     };
     setUser(authUser);
     localStorage.setItem('mrj_user', JSON.stringify(authUser));
