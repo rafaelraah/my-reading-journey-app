@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Search, User, BookOpen, BookMarked, CheckCircle, Loader2 } from 'lucide-react';
+import { Search, User, BookOpen, BookMarked, CheckCircle, Loader2, Sparkles } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 
 const Users = () => {
@@ -105,6 +106,14 @@ function UserCard({
             <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" /> {u.lendo} Lendo</span>
             <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3" /> {u.lido} Lidos</span>
           </div>
+          {u.favorite_genre && (
+            <div className="mt-2 flex items-center gap-1.5">
+              <Sparkles className="h-3 w-3 text-accent" />
+              <Badge variant="secondary" className="font-display text-xs">
+                Gênero Favorito do Usuário: {u.favorite_genre}
+              </Badge>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2">
