@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocial } from '@/hooks/useSocial';
@@ -140,15 +141,31 @@ function FeedItemCard({ item, fetchReplies, createReply }: { item: FeedItem } & 
   const time = formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: ptBR });
   const [open, setOpen] = useState(false);
   const [replies, setReplies] = useState<FeedReply[]>([]);
+  const [replyCount, setReplyCount] = useState(0);
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (!item.target_id) return;
+    (async () => {
+      const { count } = await (supabase as any)
+        .from('feed_respostas')
+        .select('id', { count: 'exact', head: true })
+        .eq('target_kind', item.kind)
+        .eq('target_id', item.target_id);
+      if (active && typeof count === 'number') setReplyCount(count);
+    })();
+    return () => { active = false; };
+  }, [item.kind, item.target_id]);
 
   const loadReplies = useCallback(async () => {
     if (!item.target_id) return;
     setLoadingReplies(true);
     const data = await fetchReplies(item.kind, item.target_id);
     setReplies(data);
+    setReplyCount(data.length);
     setLoadingReplies(false);
   }, [fetchReplies, item.kind, item.target_id]);
 
@@ -213,10 +230,16 @@ function FeedItemCard({ item, fetchReplies, createReply }: { item: FeedItem } & 
             )}
 
             <div className="mt-3 flex items-center gap-2">
+              {replyCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={toggle} className="h-8 px-2 text-xs">
+                  <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                  {open ? 'Ocultar respostas' : 'Ver respostas'}
+                  <span className="ml-1 text-muted-foreground">({replyCount})</span>
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={toggle} className="h-8 px-2 text-xs">
                 <ReplyIcon className="h-3.5 w-3.5 mr-1" />
-                {open ? 'Ocultar respostas' : 'Responder'}
-                {replies.length > 0 && <span className="ml-1 text-muted-foreground">({replies.length})</span>}
+                {open ? 'Cancelar' : 'Responder'}
               </Button>
             </div>
 
