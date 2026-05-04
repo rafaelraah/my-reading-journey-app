@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      feed_respostas: {
+        Row: {
+          conteudo: string
+          created_at: string
+          id: string
+          target_id: string
+          target_kind: string
+          usuario_id: string
+        }
+        Insert: {
+          conteudo: string
+          created_at?: string
+          id?: string
+          target_id: string
+          target_kind: string
+          usuario_id: string
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string
+          id?: string
+          target_id?: string
+          target_kind?: string
+          usuario_id?: string
+        }
+        Relationships: []
+      }
       livro_eventos: {
         Row: {
           created_at: string

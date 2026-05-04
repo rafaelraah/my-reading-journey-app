@@ -21,6 +21,15 @@ export interface FeedItem {
   livro_imagem?: string | null;
   // post-specific
   conteudo?: string;
+  // raw target id (without 'e-'/'p-' prefix) used for replies
+  target_id?: string;
+}
+
+export interface FeedReply {
+  id: string;
+  conteudo: string;
+  created_at: string;
+  author: FeedAuthor | null;
 }
 
 /**
@@ -84,6 +93,7 @@ export function useFeed() {
       livro_id: e.livro_id,
       livro_titulo: e.livros_globais?.titulo,
       livro_imagem: e.livros_globais?.imagem_url,
+      target_id: e.id,
     }));
 
     const postItems: FeedItem[] = (postData as any[] || []).map((p) => ({
@@ -92,6 +102,7 @@ export function useFeed() {
       created_at: p.created_at,
       author: authors[p.usuario_id] || null,
       conteudo: p.conteudo,
+      target_id: p.id,
     }));
 
     const merged = [...evItems, ...postItems].sort(
@@ -109,5 +120,68 @@ export function useFeed() {
     return { error: error?.message || null };
   }, []);
 
-  return { items, loading, fetchFeed, createPost };
+  /** Fetch replies for a single feed item (post or event). */
+  const fetchReplies = useCallback(async (kind: 'event' | 'post', targetId: string): Promise<FeedReply[]> => {
+    const { data } = await (supabase as any)
+      .from('feed_respostas')
+      .select('id, conteudo, created_at, usuario_id')
+      .eq('target_kind', kind)
+      .eq('target_id', targetId)
+      .order('created_at', { ascending: true });
+    const rows = (data as any[]) || [];
+    if (rows.length === 0) return [];
+    const ids = Array.from(new Set(rows.map((r) => r.usuario_id).filter(Boolean)));
+    let authors: Record<string, FeedAuthor> = {};
+    if (ids.length > 0) {
+      const { data: usersData } = await supabase
+        .from('usuarios')
+        .select('id, nome, username, avatar_url')
+        .in('id', ids);
+      (usersData as any[] || []).forEach((u) => { authors[u.id] = u; });
+    }
+    return rows.map((r) => ({
+      id: r.id,
+      conteudo: r.conteudo,
+      created_at: r.created_at,
+      author: authors[r.usuario_id] || null,
+    }));
+  }, []);
+
+  /**
+   * Create a reply and notify the original author (if not self).
+   */
+  const createReply = useCallback(async (
+    fromUser: { id: string; nome: string; username: string | null },
+    item: FeedItem,
+    conteudo: string,
+  ) => {
+    const text = conteudo.trim();
+    if (!text) return { error: 'Conteúdo vazio' };
+    if (!item.target_id) return { error: 'Item inválido' };
+
+    const { error } = await (supabase as any).from('feed_respostas').insert({
+      usuario_id: fromUser.id,
+      target_kind: item.kind,
+      target_id: item.target_id,
+      conteudo: text,
+    });
+    if (error) return { error: error.message };
+
+    // Notify original author (if exists and is not self)
+    if (item.author && item.author.id && item.author.id !== fromUser.id) {
+      const handle = fromUser.username ? `@${fromUser.username}` : fromUser.nome;
+      const preview = item.kind === 'post'
+        ? (item.conteudo || '').slice(0, 40)
+        : (item.livro_titulo || item.descricao || '').slice(0, 40);
+      await supabase.from('notificacoes').insert({
+        usuario_id: item.author.id,
+        tipo: 'reply',
+        mensagem: `${handle} respondeu sua publicação${preview ? `: "${preview}"` : ''}`,
+      } as any);
+    }
+
+    return { error: null };
+  }, []);
+
+  return { items, loading, fetchFeed, createPost, fetchReplies, createReply };
 }
