@@ -79,10 +79,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from('usuarios')
       .insert({ username, password_hash: password, nome } as any)
-      .select()
+      .select('id, username, nome, avatar_url')
       .single();
 
-    if (error) {
+    if (error || !data) {
       toast.error('Erro ao criar conta');
       return false;
     }
