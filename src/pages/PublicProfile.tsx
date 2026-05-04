@@ -13,7 +13,7 @@ import { StarRating } from '@/components/StarRating';
 import { EventTimeline } from '@/components/EventTimeline';
 import { ProfileStatsModal, StatsModalKind, favoriteGenre } from '@/components/ProfileStatsModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { User, BookOpen, Loader2, Star, Clock, BarChart3, Sparkles } from 'lucide-react';
+import { User, BookOpen, Loader2, Star, Clock, BarChart3, Sparkles, BookMarked, BookOpenCheck, Library } from 'lucide-react';
 import { Book } from '@/types/book';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -376,6 +376,54 @@ function PublicDashboard({ books, events }: { books: ProfileBook[]; events: Book
                 <span className="text-xs text-muted-foreground font-display capitalize">{m.month}</span>
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <h3 className="font-display text-lg font-semibold text-foreground mb-4">Kanban de Leitura</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {([
+              { status: 'quero_ler' as const, label: 'Quero Ler', icon: BookMarked, items: wantBooks },
+              { status: 'lendo' as const, label: 'Estou Lendo', icon: BookOpenCheck, items: readingBooks },
+              { status: 'lido' as const, label: 'Já Li', icon: Library, items: readBooks },
+            ]).map(col => {
+              const Icon = col.icon;
+              return (
+                <div key={col.status} className="rounded-lg border-2 border-dashed border-border bg-card/50 p-3 min-h-[200px]">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-4 w-4 text-accent" />
+                      <h4 className="font-display text-sm font-semibold text-foreground">{col.label}</h4>
+                    </div>
+                    <span className="text-xs font-display px-2 py-0.5 rounded-full bg-primary/10 text-primary">{col.items.length}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {col.items.length === 0 ? (
+                      <p className="text-center text-xs text-muted-foreground italic mt-6">Vazio</p>
+                    ) : col.items.slice(0, 6).map(book => (
+                      <div key={book.user_book_id} className="flex gap-2 p-2 rounded-md bg-background border border-border">
+                        <div className="h-12 w-8 rounded bg-muted flex-shrink-0 overflow-hidden">
+                          {book.imagem_url ? (
+                            <img src={book.imagem_url} alt={book.titulo} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center"><BookOpen className="h-3 w-3 text-muted-foreground/40" /></div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-display text-xs font-semibold leading-tight truncate">{book.titulo}</p>
+                          <p className="text-xs text-muted-foreground truncate">{book.autor}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {col.items.length > 6 && (
+                      <p className="text-center text-xs text-muted-foreground italic">+{col.items.length - 6} mais</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
