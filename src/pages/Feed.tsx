@@ -213,11 +213,24 @@ function FeedItemCard({ item, fetchReplies, createReply }: { item: FeedItem } & 
             )}
 
             <div className="mt-3 flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={toggle} className="h-8 px-2 text-xs">
-                <ReplyIcon className="h-3.5 w-3.5 mr-1" />
-                {open ? 'Ocultar respostas' : 'Responder'}
-                {replies.length > 0 && <span className="ml-1 text-muted-foreground">({replies.length})</span>}
-              </Button>
+              {replies.length > 0 && open ? (
+                <Button variant="ghost" size="sm" onClick={toggle} className="h-8 px-2 text-xs">
+                  <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                  Ocultar respostas
+                  <span className="ml-1 text-muted-foreground">({replies.length})</span>
+                </Button>
+              ) : replies.length > 0 ? (
+                <Button variant="ghost" size="sm" onClick={toggle} className="h-8 px-2 text-xs">
+                  <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                  Ver respostas
+                  <span className="ml-1 text-muted-foreground">({replies.length})</span>
+                </Button>
+              ) : (
+                <Button variant="ghost" size="sm" onClick={toggle} className="h-8 px-2 text-xs">
+                  <ReplyIcon className="h-3.5 w-3.5 mr-1" />
+                  {open ? 'Cancelar' : 'Responder'}
+                </Button>
+              )}
             </div>
 
             {open && (
