@@ -2,14 +2,14 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocial } from '@/hooks/useSocial';
-import { useFeed, FeedItem } from '@/hooks/useFeed';
+import { useFeed, FeedItem, FeedReply } from '@/hooks/useFeed';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Globe, Users as UsersIcon, Loader2, Send, BookOpen, MessageSquare, ArrowRightLeft, Star, FileText, PlusCircle, User as UserIcon } from 'lucide-react';
+import { Globe, Users as UsersIcon, Loader2, Send, BookOpen, MessageSquare, ArrowRightLeft, Star, FileText, PlusCircle, User as UserIcon, Reply as ReplyIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -25,7 +25,7 @@ const EVENT_META: Record<string, { icon: any; color: string }> = {
 const Feed = () => {
   const { user } = useAuth();
   const { following } = useSocial();
-  const { items, loading, fetchFeed, createPost } = useFeed();
+  const { items, loading, fetchFeed, createPost, fetchReplies, createReply } = useFeed();
   const [tab, setTab] = useState<'general' | 'following'>('general');
   const [postText, setPostText] = useState('');
   const [posting, setPosting] = useState(false);
@@ -104,10 +104,10 @@ const Feed = () => {
           </TabsList>
 
           <TabsContent value="general" className="mt-4">
-            <FeedList items={items} loading={loading} emptyMessage="Nenhuma atividade ainda." />
+            <FeedList items={items} loading={loading} emptyMessage="Nenhuma atividade ainda." fetchReplies={fetchReplies} createReply={createReply} />
           </TabsContent>
           <TabsContent value="following" className="mt-4">
-            <FeedList items={items} loading={loading} emptyMessage="Siga outros leitores para ver suas atividades aqui." />
+            <FeedList items={items} loading={loading} emptyMessage="Siga outros leitores para ver suas atividades aqui." fetchReplies={fetchReplies} createReply={createReply} />
           </TabsContent>
         </Tabs>
       </main>
@@ -115,7 +115,12 @@ const Feed = () => {
   );
 };
 
-function FeedList({ items, loading, emptyMessage }: { items: FeedItem[]; loading: boolean; emptyMessage: string }) {
+type ReplyFns = {
+  fetchReplies: (kind: 'event' | 'post', targetId: string) => Promise<FeedReply[]>;
+  createReply: (fromUser: { id: string; nome: string; username: string | null }, item: FeedItem, conteudo: string) => Promise<{ error: string | null }>;
+};
+
+function FeedList({ items, loading, emptyMessage, fetchReplies, createReply }: { items: FeedItem[]; loading: boolean; emptyMessage: string } & ReplyFns) {
   if (loading) {
     return <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-accent" /></div>;
   }
@@ -124,14 +129,51 @@ function FeedList({ items, loading, emptyMessage }: { items: FeedItem[]; loading
   }
   return (
     <div className="space-y-3">
-      {items.map((it) => <FeedItemCard key={it.id} item={it} />)}
+      {items.map((it) => <FeedItemCard key={it.id} item={it} fetchReplies={fetchReplies} createReply={createReply} />)}
     </div>
   );
 }
 
-function FeedItemCard({ item }: { item: FeedItem }) {
+function FeedItemCard({ item, fetchReplies, createReply }: { item: FeedItem } & ReplyFns) {
+  const { user } = useAuth();
   const author = item.author;
   const time = formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: ptBR });
+  const [open, setOpen] = useState(false);
+  const [replies, setReplies] = useState<FeedReply[]>([]);
+  const [loadingReplies, setLoadingReplies] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const loadReplies = useCallback(async () => {
+    if (!item.target_id) return;
+    setLoadingReplies(true);
+    const data = await fetchReplies(item.kind, item.target_id);
+    setReplies(data);
+    setLoadingReplies(false);
+  }, [fetchReplies, item.kind, item.target_id]);
+
+  const toggle = async () => {
+    const next = !open;
+    setOpen(next);
+    if (next) await loadReplies();
+  };
+
+  const handleSend = async () => {
+    if (!user || !replyText.trim()) return;
+    setSending(true);
+    const { error } = await createReply(
+      { id: user.id, nome: user.nome, username: user.username },
+      item,
+      replyText,
+    );
+    setSending(false);
+    if (error) {
+      toast.error('Erro ao enviar resposta');
+    } else {
+      setReplyText('');
+      await loadReplies();
+    }
+  };
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -168,6 +210,70 @@ function FeedItemCard({ item }: { item: FeedItem }) {
               </div>
             ) : (
               <EventBody item={item} />
+            )}
+
+            <div className="mt-3 flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={toggle} className="h-8 px-2 text-xs">
+                <ReplyIcon className="h-3.5 w-3.5 mr-1" />
+                {open ? 'Ocultar respostas' : 'Responder'}
+                {replies.length > 0 && <span className="ml-1 text-muted-foreground">({replies.length})</span>}
+              </Button>
+            </div>
+
+            {open && (
+              <div className="mt-3 space-y-3 border-l-2 border-accent/20 pl-3">
+                {loadingReplies ? (
+                  <div className="flex justify-center py-2"><Loader2 className="h-4 w-4 animate-spin text-accent" /></div>
+                ) : replies.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">Nenhuma resposta ainda. Seja o primeiro!</p>
+                ) : (
+                  replies.map((r) => (
+                    <div key={r.id} className="flex gap-2">
+                      {r.author ? (
+                        <Link to={`/usuario/${r.author.id}`} className="flex-shrink-0">
+                          <Avatar className="h-7 w-7 border border-accent/20">
+                            {r.author.avatar_url ? <AvatarImage src={r.author.avatar_url} /> : null}
+                            <AvatarFallback className="bg-accent/20 text-accent text-[10px]"><UserIcon className="h-3 w-3" /></AvatarFallback>
+                          </Avatar>
+                        </Link>
+                      ) : (
+                        <Avatar className="h-7 w-7"><AvatarFallback><UserIcon className="h-3 w-3" /></AvatarFallback></Avatar>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {r.author ? (
+                            <Link to={`/usuario/${r.author.id}`} className="text-sm font-display font-semibold text-foreground hover:underline">
+                              {r.author.nome}
+                            </Link>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Usuário</span>
+                          )}
+                          <span className="text-[10px] text-muted-foreground">
+                            · {formatDistanceToNow(new Date(r.created_at), { addSuffix: true, locale: ptBR })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground whitespace-pre-wrap break-words">{r.conteudo}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                {user && (
+                  <div className="flex gap-2 pt-2">
+                    <Textarea
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder="Escreva uma resposta..."
+                      rows={2}
+                      maxLength={300}
+                      className="resize-none text-sm"
+                    />
+                    <Button onClick={handleSend} disabled={!replyText.trim() || sending} size="sm" className="self-end">
+                      {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
