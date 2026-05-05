@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useGlobalBooks } from '@/hooks/useGlobalBooks';
 import { useUserBooks } from '@/hooks/useUserBooks';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,6 +38,19 @@ const Explore = () => {
   const [bookStats, setBookStats] = useState<{ avgRating: number; totalReaders: number } | null>(null);
   const [addingStatus, setAddingStatus] = useState<string | null>(null);
   const [reviewBook, setReviewBook] = useState<Book | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const livroId = searchParams.get('livro');
+    if (livroId && globalBooks.length > 0 && !selectedBook) {
+      const found = globalBooks.find((b) => b.id === livroId);
+      if (found) {
+        setSelectedBook(found);
+        searchParams.delete('livro');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [globalBooks, searchParams, selectedBook, setSearchParams]);
 
   useEffect(() => {
     if (selectedBook) {
