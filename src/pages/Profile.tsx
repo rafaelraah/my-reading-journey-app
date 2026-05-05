@@ -16,8 +16,9 @@ import { EventTimeline } from '@/components/EventTimeline';
 import { ImageCropper } from '@/components/ImageCropper';
 import { ProfileStatsModal, StatsModalKind, favoriteGenre } from '@/components/ProfileStatsModal';
 import { compressImage } from '@/lib/imageUtils';
-import { BookOpen, Star, Clock, Settings, Camera, Pencil, Check, X, Loader2, User, BarChart3, Sparkles } from 'lucide-react';
-import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { BookOpen, Star, Clock, Settings, Camera, Pencil, Check, X, Loader2, User, BarChart3, Sparkles, MessageSquare } from 'lucide-react';
+import { format, subMonths, startOfMonth, endOfMonth, formatDistanceToNow } from 'date-fns';
+import { ProfileFeed } from '@/components/ProfileFeed';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { Book } from '@/types/book';
@@ -66,6 +67,7 @@ const Profile = () => {
   const ratedBooks = allBooks.filter(b => b.rating && b.rating > 0);
   const readBooks = allBooks.filter(b => b.status === 'lido');
   const readingBooks = allBooks.filter(b => b.status === 'lendo');
+  const wantBooks = allBooks.filter(b => b.status === 'quero_ler');
   const favGenre = favoriteGenre(allBooks);
   const usernameLabel = user.username || user.nome;
 
@@ -169,6 +171,7 @@ const Profile = () => {
 
               <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
                 {stat('Lidos', readBooks.length, 'lidos')}
+                {stat('Quero Ler', wantBooks.length, 'quero_ler')}
                 {stat('Lendo', readingBooks.length, 'lendo')}
                 {stat('Avaliações', ratedBooks.length, 'avaliacoes')}
                 {stat('Seguidores', counts.followers, 'seguidores')}
@@ -190,10 +193,11 @@ const Profile = () => {
 
       <div className="container max-w-4xl mx-auto px-4 py-6">
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="w-full grid grid-cols-5 mb-6">
+          <TabsList className="w-full grid grid-cols-6 mb-6">
             <TabsTrigger value="dashboard" className="flex items-center gap-1.5 text-sm"><BarChart3 className="h-4 w-4" /> Dashboard</TabsTrigger>
             <TabsTrigger value="books" className="flex items-center gap-1.5 text-sm"><BookOpen className="h-4 w-4" /> Meus Livros</TabsTrigger>
             <TabsTrigger value="ratings" className="flex items-center gap-1.5 text-sm"><Star className="h-4 w-4" /> Avaliações</TabsTrigger>
+            <TabsTrigger value="feed" className="flex items-center gap-1.5 text-sm"><MessageSquare className="h-4 w-4" /> Feed</TabsTrigger>
             <TabsTrigger value="activity" className="flex items-center gap-1.5 text-sm"><Clock className="h-4 w-4" /> Atividade</TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-1.5 text-sm"><Settings className="h-4 w-4" /> Config</TabsTrigger>
           </TabsList>
@@ -249,6 +253,10 @@ const Profile = () => {
             )}
           </TabsContent>
 
+          <TabsContent value="feed">
+            <ProfileFeed userId={user.id} />
+          </TabsContent>
+
           <TabsContent value="activity">
             {loadingEvents ? (
               <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-accent" /></div>
@@ -288,6 +296,7 @@ const Profile = () => {
         books={
           statsModal === 'lidos' ? readBooks :
           statsModal === 'lendo' ? readingBooks :
+          statsModal === 'quero_ler' ? wantBooks :
           statsModal === 'avaliacoes' ? ratedBooks : []
         }
         users={statsModal === 'seguidores' ? followersList : statsModal === 'seguindo' ? followingList : []}
@@ -348,9 +357,9 @@ function ProfileDashboard({ books, events }: { books: Book[]; events: BookEvent[
     const m = subMonths(now, i);
     const mStart = startOfMonth(m);
     const mEnd = endOfMonth(m);
-    const count = events.filter(e => {
-      if (e.tipo !== 'moved' || !e.descricao.includes('Já Li')) return false;
-      const d = new Date(e.created_at);
+    const count = readBooks.filter(b => {
+      if (!b.completion_date) return false;
+      const d = new Date(b.completion_date);
       return d >= mStart && d <= mEnd;
     }).length;
     monthlyData.push({ month: format(m, 'MMM', { locale: ptBR }), count });

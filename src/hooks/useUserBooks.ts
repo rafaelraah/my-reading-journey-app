@@ -47,6 +47,7 @@ export function useUserBooks() {
         rating: ub.rating,
         review: ub.review,
         created_at: ub.created_at,
+        completion_date: ub.completion_date ?? null,
       };
     });
 
@@ -110,15 +111,17 @@ export function useUserBooks() {
     }
   };
 
-  const saveReview = async (bookId: string, rating: number, review: string) => {
+  const saveReview = async (bookId: string, rating: number, review: string, completionDate?: string | null) => {
     const ub = books.find(b => b.id === bookId);
     if (!ub) return;
 
-    setBooks(prev => prev.map(b => b.id === bookId ? { ...b, rating, review } : b));
+    setBooks(prev => prev.map(b => b.id === bookId ? { ...b, rating, review, completion_date: completionDate ?? b.completion_date } : b));
 
+    const updatePayload: any = { rating, review };
+    if (completionDate !== undefined) updatePayload.completion_date = completionDate;
     const { error } = await supabase
       .from('usuario_livros')
-      .update({ rating, review })
+      .update(updatePayload)
       .eq('id', ub.user_book_id);
 
     if (error) {

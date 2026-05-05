@@ -9,6 +9,7 @@ export interface Book {
   rating: number | null;
   review: string | null;
   created_at: string;
+  completion_date?: string | null;
 }
 
 export const CATEGORIES = [

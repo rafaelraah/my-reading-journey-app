@@ -33,7 +33,7 @@ export function useBooks() {
   const addBook = async (book: Omit<Book, 'id' | 'created_at' | 'status'>) => {
     const { data, error } = await supabase
       .from('livros')
-      .insert({ ...book, status: 'quero_ler' })
+      .insert({ ...book, status: 'quero_ler' } as any)
       .select()
       .single();
 

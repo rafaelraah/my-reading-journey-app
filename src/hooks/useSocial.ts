@@ -20,6 +20,8 @@ export interface Notification {
   mensagem: string;
   lido: boolean;
   created_at: string;
+  livro_id?: string | null;
+  actor_id?: string | null;
 }
 
 export function useSocial() {
@@ -200,6 +202,41 @@ export function useSocial() {
     return ((data as any[]) || []).map((r) => r.usuarios).filter(Boolean);
   }, []);
 
+  // Recommend a book to another user
+  const recommendBook = useCallback(async (
+    targetUserId: string,
+    targetUserName: string,
+    livroId: string,
+    livroTitulo: string,
+  ) => {
+    if (!user) return { error: 'Sem usuário' };
+    const { error } = await (supabase as any).from('recomendacoes').insert({
+      de_usuario_id: user.id,
+      para_usuario_id: targetUserId,
+      livro_id: livroId,
+    });
+    if (error) return { error: error.message };
+
+    const handle = user.username ? `@${user.username}` : user.nome;
+    await (supabase as any).from('notificacoes').insert({
+      usuario_id: targetUserId,
+      tipo: 'recommendation',
+      mensagem: `${handle} te recomendou um livro: ${livroTitulo}`,
+      livro_id: livroId,
+      actor_id: user.id,
+    });
+
+    // Log a feed event so it shows up in feed/timeline
+    await supabase.from('livro_eventos').insert({
+      livro_id: livroId,
+      tipo: 'recommended',
+      descricao: `Recomendou para ${targetUserName}`,
+      usuario_id: user.id,
+    } as any);
+
+    return { error: null };
+  }, [user]);
+
   useEffect(() => {
     fetchFollowing();
     fetchNotifications();
@@ -219,5 +256,6 @@ export function useSocial() {
     getFollowCounts,
     getFollowersList,
     getFollowingList,
+    recommendBook,
   };
 }

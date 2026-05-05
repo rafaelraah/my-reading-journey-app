@@ -147,25 +147,31 @@ export type Database = {
       }
       notificacoes: {
         Row: {
+          actor_id: string | null
           created_at: string
           id: string
           lido: boolean
+          livro_id: string | null
           mensagem: string
           tipo: string
           usuario_id: string
         }
         Insert: {
+          actor_id?: string | null
           created_at?: string
           id?: string
           lido?: boolean
+          livro_id?: string | null
           mensagem: string
           tipo: string
           usuario_id: string
         }
         Update: {
+          actor_id?: string | null
           created_at?: string
           id?: string
           lido?: boolean
+          livro_id?: string | null
           mensagem?: string
           tipo?: string
           usuario_id?: string
@@ -198,6 +204,30 @@ export type Database = {
           created_at?: string
           id?: string
           usuario_id?: string
+        }
+        Relationships: []
+      }
+      recomendacoes: {
+        Row: {
+          created_at: string
+          de_usuario_id: string
+          id: string
+          livro_id: string
+          para_usuario_id: string
+        }
+        Insert: {
+          created_at?: string
+          de_usuario_id: string
+          id?: string
+          livro_id: string
+          para_usuario_id: string
+        }
+        Update: {
+          created_at?: string
+          de_usuario_id?: string
+          id?: string
+          livro_id?: string
+          para_usuario_id?: string
         }
         Relationships: []
       }
@@ -239,6 +269,7 @@ export type Database = {
       }
       usuario_livros: {
         Row: {
+          completion_date: string | null
           created_at: string
           current_page: number | null
           id: string
@@ -249,6 +280,7 @@ export type Database = {
           usuario_id: string
         }
         Insert: {
+          completion_date?: string | null
           created_at?: string
           current_page?: number | null
           id?: string
@@ -259,6 +291,7 @@ export type Database = {
           usuario_id: string
         }
         Update: {
+          completion_date?: string | null
           created_at?: string
           current_page?: number | null
           id?: string

@@ -14,13 +14,15 @@ import { StarRating } from '@/components/StarRating';
 import { EventTimeline } from '@/components/EventTimeline';
 import { ProfileStatsModal, StatsModalKind, favoriteGenre } from '@/components/ProfileStatsModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { User, BookOpen, Loader2, Star, Clock, BarChart3, Sparkles, BookMarked, BookOpenCheck, Library } from 'lucide-react';
+import { User, BookOpen, Loader2, Star, Clock, BarChart3, Sparkles, BookMarked, BookOpenCheck, Library, MessageSquare } from 'lucide-react';
+import { ProfileFeed } from '@/components/ProfileFeed';
 import { Book } from '@/types/book';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface ProfileBook extends Book {
   user_book_id: string;
+  completion_date?: string | null;
 }
 
 interface UserLite { id: string; nome: string; username: string | null; avatar_url: string | null; }
@@ -74,6 +76,7 @@ const PublicProfile = () => {
           rating: ub.rating,
           review: ub.review,
           created_at: ub.created_at,
+          completion_date: ub.completion_date ?? null,
         });
       }
     }
@@ -110,6 +113,7 @@ const PublicProfile = () => {
   const isFollowing = following.has(profile.id);
   const readBooks = books.filter(b => b.status === 'lido');
   const readingBooks = books.filter(b => b.status === 'lendo');
+  const wantBooks = books.filter(b => b.status === 'quero_ler');
   const ratedBooks = books.filter(b => b.rating && b.rating > 0);
   const favGenre = favoriteGenre(books);
   const usernameLabel = profile.username || profile.nome;
@@ -145,6 +149,7 @@ const PublicProfile = () => {
 
               <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
                 {stat('Lidos', readBooks.length, 'lidos')}
+                {stat('Quero Ler', wantBooks.length, 'quero_ler')}
                 {stat('Lendo', readingBooks.length, 'lendo')}
                 {stat('Avaliações', ratedBooks.length, 'avaliacoes')}
                 {stat('Seguidores', counts.followers, 'seguidores')}
@@ -181,10 +186,11 @@ const PublicProfile = () => {
       {/* Tabs */}
       <div className="container max-w-4xl mx-auto px-4 py-6">
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="w-full grid grid-cols-4 mb-6">
+          <TabsList className="w-full grid grid-cols-5 mb-6">
             <TabsTrigger value="dashboard" className="flex items-center gap-1.5 text-sm"><BarChart3 className="h-4 w-4" /> Dashboard</TabsTrigger>
             <TabsTrigger value="books" className="flex items-center gap-1.5 text-sm"><BookOpen className="h-4 w-4" /> Livros</TabsTrigger>
             <TabsTrigger value="ratings" className="flex items-center gap-1.5 text-sm"><Star className="h-4 w-4" /> Avaliações</TabsTrigger>
+            <TabsTrigger value="feed" className="flex items-center gap-1.5 text-sm"><MessageSquare className="h-4 w-4" /> Feed</TabsTrigger>
             <TabsTrigger value="activity" className="flex items-center gap-1.5 text-sm"><Clock className="h-4 w-4" /> Atividade</TabsTrigger>
           </TabsList>
 
@@ -249,6 +255,10 @@ const PublicProfile = () => {
             )}
           </TabsContent>
 
+          <TabsContent value="feed">
+            <ProfileFeed userId={profile.id} />
+          </TabsContent>
+
           <TabsContent value="activity">
             {events.length === 0 ? (
               <p className="text-center text-muted-foreground py-10">Nenhuma atividade registrada.</p>
@@ -266,6 +276,7 @@ const PublicProfile = () => {
         books={
           statsModal === 'lidos' ? readBooks :
           statsModal === 'lendo' ? readingBooks :
+          statsModal === 'quero_ler' ? wantBooks :
           statsModal === 'avaliacoes' ? ratedBooks : []
         }
         users={statsModal === 'seguidores' ? followersList : statsModal === 'seguindo' ? followingList : []}
@@ -332,9 +343,9 @@ function PublicDashboard({ books, events }: { books: ProfileBook[]; events: Book
     const m = subMonths(now, i);
     const mStart = startOfMonth(m);
     const mEnd = endOfMonth(m);
-    const count = events.filter(e => {
-      if (e.tipo !== 'moved' || !e.descricao.includes('Já Li')) return false;
-      const d = new Date(e.created_at);
+    const count = readBooks.filter(b => {
+      if (!b.completion_date) return false;
+      const d = new Date(b.completion_date);
       return d >= mStart && d <= mEnd;
     }).length;
     monthlyData.push({ month: format(m, 'MMM', { locale: ptBR }), count });

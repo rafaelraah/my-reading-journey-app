@@ -46,9 +46,9 @@ const Insights = () => {
   const userBookIds = new Set(books.map(b => b.id));
   const userEvents = events.filter(e => userBookIds.has(e.livro_id));
 
-  const movedToReadThisMonth = userEvents.filter(e => {
-    if (e.tipo !== 'moved' || !e.descricao.includes('Já Li')) return false;
-    const d = new Date(e.created_at);
+  const completedThisMonth = readBooks.filter(b => {
+    if (!b.completion_date) return false;
+    const d = new Date(b.completion_date);
     return d >= thisMonthStart && d <= thisMonthEnd;
   });
 
@@ -57,9 +57,9 @@ const Insights = () => {
     const m = subMonths(now, i);
     const mStart = startOfMonth(m);
     const mEnd = endOfMonth(m);
-    const count = userEvents.filter(e => {
-      if (e.tipo !== 'moved' || !e.descricao.includes('Já Li')) return false;
-      const d = new Date(e.created_at);
+    const count = readBooks.filter(b => {
+      if (!b.completion_date) return false;
+      const d = new Date(b.completion_date);
       return d >= mStart && d <= mEnd;
     }).length;
     monthlyData.push({ month: format(m, 'MMM', { locale: ptBR }), count });
@@ -87,7 +87,7 @@ const Insights = () => {
     : null;
 
   const insights = [
-    { icon: BookOpen, color: 'text-green-600 bg-green-100', title: 'Livros lidos este mês', value: movedToReadThisMonth.length.toString(), subtitle: `Você leu ${movedToReadThisMonth.length} livro(s) este mês` },
+    { icon: BookOpen, color: 'text-green-600 bg-green-100', title: 'Livros lidos este mês', value: completedThisMonth.length.toString(), subtitle: `Você leu ${completedThisMonth.length} livro(s) este mês` },
     { icon: Star, color: 'text-yellow-600 bg-yellow-100', title: 'Média de avaliações', value: avgRating, subtitle: ratedBooks.length > 0 ? `Baseado em ${ratedBooks.length} avaliações` : 'Nenhuma avaliação ainda' },
     { icon: Brain, color: 'text-purple-600 bg-purple-100', title: 'Categoria favorita', value: topCategory ? topCategory[0] : '—', subtitle: topCategory ? `${topCategory[0]} com ${topCategory[1]} livros` : 'Leia mais livros para descobrir' },
     { icon: Timer, color: 'text-blue-600 bg-blue-100', title: 'Tempo médio por livro', value: avgFinishDays ? `${avgFinishDays}d` : '—', subtitle: avgFinishDays ? `Em média ${avgFinishDays} dias` : 'Dados insuficientes' },
