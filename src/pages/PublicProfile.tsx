@@ -343,9 +343,9 @@ function PublicDashboard({ books, events }: { books: ProfileBook[]; events: Book
     const m = subMonths(now, i);
     const mStart = startOfMonth(m);
     const mEnd = endOfMonth(m);
-    const count = events.filter(e => {
-      if (e.tipo !== 'moved' || !e.descricao.includes('Já Li')) return false;
-      const d = new Date(e.created_at);
+    const count = readBooks.filter(b => {
+      if (!b.completion_date) return false;
+      const d = new Date(b.completion_date);
       return d >= mStart && d <= mEnd;
     }).length;
     monthlyData.push({ month: format(m, 'MMM', { locale: ptBR }), count });
