@@ -4,6 +4,12 @@ import { StarRating } from './StarRating';
 import { EventTimeline } from './EventTimeline';
 import { useBookEvents, BookEvent } from '@/hooks/useBookEvents';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useSocial } from '@/hooks/useSocial';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -22,7 +28,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { BookOpen, Trash2, Share2 } from 'lucide-react';
+import { BookOpen, Trash2, Share2, Send, User as UserIcon, Loader2 } from 'lucide-react';
 
 interface BookDetailModalProps {
   book: Book | null;
@@ -33,19 +39,60 @@ interface BookDetailModalProps {
 
 export function BookDetailModal({ book, open, onClose, onDelete }: BookDetailModalProps) {
   const { fetchBookEvents } = useBookEvents();
+  const { user } = useAuth();
+  const { getFollowingList, recommendBook } = useSocial();
   const [events, setEvents] = useState<BookEvent[]>([]);
+  const [avgInfo, setAvgInfo] = useState<{ avg: number; count: number } | null>(null);
+  const [recOpen, setRecOpen] = useState(false);
+  const [following, setFollowing] = useState<{ id: string; nome: string; username: string | null; avatar_url: string | null }[]>([]);
+  const [loadingFollowing, setLoadingFollowing] = useState(false);
+  const [sendingTo, setSendingTo] = useState<string | null>(null);
 
   useEffect(() => {
     if (book && open) {
       fetchBookEvents(book.id).then(setEvents);
+      // Compute average rating across all users for this book
+      (async () => {
+        const { data } = await supabase
+          .from('usuario_livros')
+          .select('rating')
+          .eq('livro_id', book.id)
+          .not('rating', 'is', null);
+        const ratings = ((data as any[]) || []).map((r) => r.rating).filter((r) => typeof r === 'number' && r > 0);
+        if (ratings.length === 0) setAvgInfo({ avg: 0, count: 0 });
+        else setAvgInfo({ avg: ratings.reduce((s, r) => s + r, 0) / ratings.length, count: ratings.length });
+      })();
     } else {
       setEvents([]);
+      setAvgInfo(null);
     }
   }, [book, open, fetchBookEvents]);
+
+  const openRecommend = async () => {
+    if (!user) return;
+    setRecOpen(true);
+    setLoadingFollowing(true);
+    const list = await getFollowingList(user.id);
+    setFollowing(list);
+    setLoadingFollowing(false);
+  };
+
+  const handleRecommend = async (target: { id: string; nome: string; username: string | null }) => {
+    if (!book) return;
+    setSendingTo(target.id);
+    const { error } = await recommendBook(target.id, target.username ? `@${target.username}` : target.nome, book.id, book.titulo);
+    setSendingTo(null);
+    if (error) toast.error('Erro ao recomendar livro');
+    else {
+      toast.success('Livro recomendado com sucesso');
+      setRecOpen(false);
+    }
+  };
 
   if (!book) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="parchment-bg border-border max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
@@ -95,6 +142,17 @@ export function BookDetailModal({ book, open, onClose, onDelete }: BookDetailMod
           </div>
         </div>
 
+        {avgInfo && avgInfo.count > 0 && (
+          <div className="mt-4 p-4 rounded-lg bg-background/60 border border-border">
+            <h4 className="font-display text-sm font-semibold mb-2 text-foreground">Média da comunidade</h4>
+            <div className="flex items-center gap-3">
+              <StarRating value={Math.round(avgInfo.avg)} readonly size="md" />
+              <span className="font-display text-lg font-bold text-foreground">{avgInfo.avg.toFixed(1)}/10</span>
+              <span className="text-xs text-muted-foreground">({avgInfo.count} avaliação{avgInfo.count > 1 ? 'es' : ''})</span>
+            </div>
+          </div>
+        )}
+
         {book.review && (
           <div className="mt-4 p-4 rounded-lg bg-background/60 border border-border">
             <h4 className="font-display text-sm font-semibold mb-2 text-foreground">Resenha</h4>
@@ -111,18 +169,26 @@ export function BookDetailModal({ book, open, onClose, onDelete }: BookDetailMod
         </div>
 
         <div className="flex justify-between mt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="font-display"
-            onClick={() => {
-              const msg = encodeURIComponent(`📚 Estou lendo o livro "${book.titulo}"! Recomendo muito. Venha ver e adicionar à sua lista: ${window.location.origin}`);
-              window.open(`https://wa.me/?text=${msg}`, '_blank');
-            }}
-          >
-            <Share2 className="h-4 w-4 mr-2" />
-            Compartilhar
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-display"
+              onClick={() => {
+                const msg = encodeURIComponent(`📚 Estou lendo o livro "${book.titulo}"! Recomendo muito. Venha ver e adicionar à sua lista: ${window.location.origin}`);
+                window.open(`https://wa.me/?text=${msg}`, '_blank');
+              }}
+            >
+              <Share2 className="h-4 w-4 mr-2" />
+              Compartilhar
+            </Button>
+            {user && (
+              <Button variant="default" size="sm" className="font-display" onClick={openRecommend}>
+                <Send className="h-4 w-4 mr-2" />
+                Recomendar para um amigo
+              </Button>
+            )}
+          </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="sm" className="font-display">
@@ -151,5 +217,43 @@ export function BookDetailModal({ book, open, onClose, onDelete }: BookDetailMod
         </div>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={recOpen} onOpenChange={(v) => !v && setRecOpen(false)}>
+      <DialogContent className="parchment-bg border-border max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-display">Recomendar "{book.titulo}"</DialogTitle>
+          <DialogDescription>Selecione um amigo para enviar a recomendação.</DialogDescription>
+        </DialogHeader>
+        {loadingFollowing ? (
+          <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-accent" /></div>
+        ) : following.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8 italic">Você ainda não segue ninguém.</p>
+        ) : (
+          <ScrollArea className="max-h-[60vh]">
+            <div className="space-y-2 pr-2">
+              {following.map((u) => (
+                <button
+                  key={u.id}
+                  onClick={() => handleRecommend(u)}
+                  disabled={sendingTo === u.id}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/10 transition-colors text-left disabled:opacity-50"
+                >
+                  <Avatar className="h-10 w-10 border-2 border-accent/30">
+                    {u.avatar_url ? <AvatarImage src={u.avatar_url} /> : null}
+                    <AvatarFallback className="bg-accent/20 text-accent"><UserIcon className="h-5 w-5" /></AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display font-semibold text-foreground truncate">{u.nome}</p>
+                    {u.username && <p className="text-xs text-muted-foreground truncate">@{u.username}</p>}
+                  </div>
+                  {sendingTo === u.id ? <Loader2 className="h-4 w-4 animate-spin text-accent" /> : <Send className="h-4 w-4 text-accent" />}
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
