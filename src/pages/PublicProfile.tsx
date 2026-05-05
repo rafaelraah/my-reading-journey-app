@@ -3,7 +3,8 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocial } from '@/hooks/useSocial';
-import { useBookEvents, BookEvent } from '@/hooks/useBookEvents';
+import { BookEvent } from '@/hooks/useBookEvents';
+import { useUserActivity } from '@/hooks/useUserActivity';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,7 +29,7 @@ const PublicProfile = () => {
   const { id } = useParams<{ id: string }>();
   const { user: me } = useAuth();
   const { following, followUser, unfollowUser, getFollowCounts, getFollowersList, getFollowingList } = useSocial();
-  const { fetchUserEvents } = useBookEvents();
+  const { fetchUserActivity } = useUserActivity();
 
   const [profile, setProfile] = useState<{ id: string; nome: string; username: string | null; avatar_url: string | null } | null>(null);
   const [books, setBooks] = useState<ProfileBook[]>([]);
@@ -49,7 +50,7 @@ const PublicProfile = () => {
       supabase.from('usuarios').select('id, nome, username, avatar_url').eq('id', id).single(),
       supabase.from('usuario_livros').select('*, livros_globais(*)').eq('usuario_id', id),
       getFollowCounts(id),
-      fetchUserEvents(id),
+      fetchUserActivity(id),
     ]);
 
     if (userData) setProfile(userData as any);
@@ -78,7 +79,7 @@ const PublicProfile = () => {
     }
     setBooks(mappedBooks);
     setLoading(false);
-  }, [id, getFollowCounts, fetchUserEvents]);
+  }, [id, getFollowCounts, fetchUserActivity]);
 
   useEffect(() => { load(); }, [load]);
 

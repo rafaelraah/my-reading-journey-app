@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserBooks } from '@/hooks/useUserBooks';
-import { useBookEvents, BookEvent } from '@/hooks/useBookEvents';
+import { BookEvent } from '@/hooks/useBookEvents';
+import { useUserActivity } from '@/hooks/useUserActivity';
 import { useSocial } from '@/hooks/useSocial';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -27,7 +28,7 @@ interface UserLite { id: string; nome: string; username: string | null; avatar_u
 const Profile = () => {
   const { user, updateUser } = useAuth();
   const { books: allBooks } = useUserBooks();
-  const { fetchUserEvents } = useBookEvents();
+  const { fetchUserActivity } = useUserActivity();
   const { getFollowCounts, getFollowersList, getFollowingList } = useSocial();
 
   const [editingName, setEditingName] = useState(false);
@@ -49,13 +50,13 @@ const Profile = () => {
     if (!user) return;
     setLoadingEvents(true);
     const [evts, c] = await Promise.all([
-      fetchUserEvents(user.id),
+      fetchUserActivity(user.id),
       getFollowCounts(user.id),
     ]);
     setEvents(evts);
     setCounts(c);
     setLoadingEvents(false);
-  }, [user, fetchUserEvents, getFollowCounts]);
+  }, [user, fetchUserActivity, getFollowCounts]);
 
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => { if (user) setNameValue(user.nome); }, [user]);
