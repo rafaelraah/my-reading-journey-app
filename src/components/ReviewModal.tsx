@@ -11,32 +11,41 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { BookOpen, Save } from 'lucide-react';
+import { BookOpen, Save, CalendarIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface ReviewModalProps {
   book: Book | null;
   open: boolean;
   onClose: () => void;
-  onSave: (id: string, rating: number, review: string) => Promise<void>;
+  onSave: (id: string, rating: number, review: string, completionDate: string | null) => Promise<void>;
 }
 
 export function ReviewModal({ book, open, onClose, onSave }: ReviewModalProps) {
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
+  const [completionDate, setCompletionDate] = useState<Date | undefined>(new Date());
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     if (!book || rating === 0) return;
     setSaving(true);
-    await onSave(book.id, rating, review);
+    const iso = completionDate ? format(completionDate, 'yyyy-MM-dd') : null;
+    await onSave(book.id, rating, review, iso);
     setSaving(false);
     setRating(0);
     setReview('');
+    setCompletionDate(new Date());
   };
 
   const handleCancel = () => {
     setRating(0);
     setReview('');
+    setCompletionDate(new Date());
     onClose();
   };
 
@@ -71,6 +80,31 @@ export function ReviewModal({ book, open, onClose, onSave }: ReviewModalProps) {
               placeholder="Escreva sua opinião sobre o livro..."
               className="min-h-[120px] bg-background/50 border-border resize-none"
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="font-display text-sm font-medium text-foreground">Data de finalização</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn('w-full justify-start text-left font-normal', !completionDate && 'text-muted-foreground')}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {completionDate ? format(completionDate, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={completionDate}
+                  onSelect={setCompletionDate}
+                  disabled={(date) => date > new Date()}
+                  initialFocus
+                  className={cn('p-3 pointer-events-auto')}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 

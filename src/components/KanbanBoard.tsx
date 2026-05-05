@@ -15,7 +15,7 @@ const COLUMN_ICONS = {
 interface KanbanBoardProps {
   getBooksByStatus: (status: Book['status']) => Book[];
   onUpdateStatus: (id: string, status: Book['status']) => void;
-  onSaveReview: (id: string, rating: number, review: string) => Promise<void>;
+  onSaveReview: (id: string, rating: number, review: string, completionDate: string | null) => Promise<void>;
   onDeleteBook: (id: string) => Promise<void>;
   books: Book[];
 }
@@ -40,8 +40,8 @@ export function KanbanBoard({ getBooksByStatus, onUpdateStatus, onSaveReview, on
     }
   };
 
-  const handleSaveReview = async (id: string, rating: number, review: string) => {
-    await onSaveReview(id, rating, review);
+  const handleSaveReview = async (id: string, rating: number, review: string, completionDate: string | null) => {
+    await onSaveReview(id, rating, review, completionDate);
     setReviewBook(null);
   };
 
