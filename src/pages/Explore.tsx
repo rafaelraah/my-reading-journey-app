@@ -84,8 +84,8 @@ const Explore = () => {
     }
   };
 
-  const handleSaveReview = async (id: string, rating: number, review: string) => {
-    await saveReview(id, rating, review);
+  const handleSaveReview = async (id: string, rating: number, review: string, completionDate: string | null) => {
+    await saveReview(id, rating, review, completionDate);
     setReviewBook(null);
   };
 
