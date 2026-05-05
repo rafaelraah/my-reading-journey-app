@@ -21,6 +21,7 @@ const EVENT_META: Record<string, { icon: any; color: string }> = {
   rated: { icon: Star, color: 'text-yellow-600 bg-yellow-100' },
   review_added: { icon: FileText, color: 'text-orange-600 bg-orange-100' },
   progress_updated: { icon: BookOpen, color: 'text-purple-600 bg-purple-100' },
+  recommended: { icon: Send, color: 'text-pink-600 bg-pink-100' },
 };
 
 const Feed = () => {
