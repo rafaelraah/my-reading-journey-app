@@ -7,7 +7,7 @@ import { BookOpen, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Book } from '@/types/book';
 
-export type StatsModalKind = 'lidos' | 'lendo' | 'avaliacoes' | 'seguidores' | 'seguindo' | null;
+export type StatsModalKind = 'lidos' | 'lendo' | 'quero_ler' | 'avaliacoes' | 'seguidores' | 'seguindo' | null;
 
 interface UserLite {
   id: string;
@@ -28,6 +28,7 @@ interface ProfileStatsModalProps {
 const TITLES: Record<NonNullable<StatsModalKind>, (u: string) => string> = {
   lidos: (u) => `Aqui estão os livros lidos de @${u}`,
   lendo: (u) => `Aqui estão os livros que @${u} está lendo`,
+  quero_ler: (u) => `Aqui estão os livros que @${u} deseja ler`,
   avaliacoes: (u) => `Aqui estão as avaliações de @${u}`,
   seguidores: (u) => `Pessoas que seguem @${u}`,
   seguindo: (u) => `Pessoas que @${u} segue`,
