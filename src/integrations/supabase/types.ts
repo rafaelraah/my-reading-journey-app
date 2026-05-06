@@ -145,6 +145,33 @@ export type Database = {
         }
         Relationships: []
       }
+      mensagens: {
+        Row: {
+          created_at: string
+          de_usuario_id: string
+          id: string
+          lida: boolean
+          mensagem: string
+          para_usuario_id: string
+        }
+        Insert: {
+          created_at?: string
+          de_usuario_id: string
+          id?: string
+          lida?: boolean
+          mensagem: string
+          para_usuario_id: string
+        }
+        Update: {
+          created_at?: string
+          de_usuario_id?: string
+          id?: string
+          lida?: boolean
+          mensagem?: string
+          para_usuario_id?: string
+        }
+        Relationships: []
+      }
       notificacoes: {
         Row: {
           actor_id: string | null
@@ -323,24 +350,30 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           id: string
+          last_seen: string | null
           nome: string
           password_hash: string | null
+          status_citacao: string | null
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           id?: string
+          last_seen?: string | null
           nome?: string
           password_hash?: string | null
+          status_citacao?: string | null
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           id?: string
+          last_seen?: string | null
           nome?: string
           password_hash?: string | null
+          status_citacao?: string | null
           username?: string | null
         }
         Relationships: []

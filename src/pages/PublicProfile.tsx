@@ -16,6 +16,7 @@ import { ProfileStatsModal, StatsModalKind, favoriteGenre } from '@/components/P
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { User, BookOpen, Loader2, Star, Clock, BarChart3, Sparkles, BookMarked, BookOpenCheck, Library, MessageSquare } from 'lucide-react';
 import { ProfileFeed } from '@/components/ProfileFeed';
+import { isOnline } from '@/hooks/usePresence';
 import { Book } from '@/types/book';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -33,7 +34,7 @@ const PublicProfile = () => {
   const { following, followUser, unfollowUser, getFollowCounts, getFollowersList, getFollowingList } = useSocial();
   const { fetchUserActivity } = useUserActivity();
 
-  const [profile, setProfile] = useState<{ id: string; nome: string; username: string | null; avatar_url: string | null } | null>(null);
+  const [profile, setProfile] = useState<{ id: string; nome: string; username: string | null; avatar_url: string | null; last_seen?: string | null; status_citacao?: string | null } | null>(null);
   const [books, setBooks] = useState<ProfileBook[]>([]);
   const [counts, setCounts] = useState({ followers: 0, following: 0 });
   const [events, setEvents] = useState<BookEvent[]>([]);
@@ -49,7 +50,7 @@ const PublicProfile = () => {
     setLoading(true);
 
     const [{ data: userData }, { data: booksData }, followCounts, userEvents] = await Promise.all([
-      supabase.from('usuarios').select('id, nome, username, avatar_url').eq('id', id).single(),
+      (supabase as any).from('usuarios').select('id, nome, username, avatar_url, last_seen, status_citacao').eq('id', id).single(),
       supabase.from('usuario_livros').select('*, livros_globais(*)').eq('usuario_id', id),
       getFollowCounts(id),
       fetchUserActivity(id),
@@ -136,16 +137,28 @@ const PublicProfile = () => {
       <div className="parchment-bg border-b border-border">
         <div className="container max-w-4xl mx-auto px-4 py-10">
           <div className="flex flex-col sm:flex-row items-center gap-6">
-            <Avatar className="h-28 w-28 border-4 border-accent/40 shadow-lg">
-              {profile.avatar_url ? <AvatarImage src={profile.avatar_url} /> : null}
-              <AvatarFallback className="bg-accent/20 text-accent text-3xl font-display">
-                <User className="h-12 w-12" />
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="h-28 w-28 border-4 border-accent/40 shadow-lg">
+                {profile.avatar_url ? <AvatarImage src={profile.avatar_url} /> : null}
+                <AvatarFallback className="bg-accent/20 text-accent text-3xl font-display">
+                  <User className="h-12 w-12" />
+                </AvatarFallback>
+              </Avatar>
+              <span
+                title={isOnline(profile.last_seen) ? 'Online' : 'Offline'}
+                className={`absolute bottom-1 right-1 h-5 w-5 rounded-full border-4 border-background ${isOnline(profile.last_seen) ? 'bg-green-500' : 'bg-muted-foreground'}`}
+              />
+            </div>
 
             <div className="flex-1 text-center sm:text-left">
               <h1 className="text-3xl font-display font-bold text-foreground">{profile.nome}</h1>
               {profile.username && <p className="text-sm text-muted-foreground mt-1">@{profile.username}</p>}
+
+              {profile.status_citacao && (
+                <p className="text-sm italic text-foreground/80 mt-2 max-w-md mx-auto sm:mx-0">
+                  “{profile.status_citacao}”
+                </p>
+              )}
 
               <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
                 {stat('Lidos', readBooks.length, 'lidos')}

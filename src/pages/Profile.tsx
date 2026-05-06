@@ -34,6 +34,7 @@ const Profile = () => {
 
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(user?.nome || '');
+  const [statusCitacao, setStatusCitacao] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [rawFile, setRawFile] = useState<File | null>(null);
   const [showCropper, setShowCropper] = useState(false);
@@ -61,6 +62,14 @@ const Profile = () => {
 
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => { if (user) setNameValue(user.nome); }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await (supabase as any).from('usuarios').select('status_citacao').eq('id', user.id).single();
+      if (data?.status_citacao) setStatusCitacao(data.status_citacao);
+    })();
+  }, [user]);
 
   if (!user) return null;
 
@@ -168,6 +177,12 @@ const Profile = () => {
                 </div>
               )}
               <p className="text-sm text-muted-foreground mt-1">@{user.username}</p>
+
+              {statusCitacao && (
+                <p className="text-sm italic text-foreground/80 mt-2 max-w-md mx-auto sm:mx-0">
+                  “{statusCitacao}”
+                </p>
+              )}
 
               <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
                 {stat('Lidos', readBooks.length, 'lidos')}
@@ -280,6 +295,27 @@ const Profile = () => {
                 <div>
                   <label className="text-sm font-display font-semibold text-foreground mb-2 block">Foto de Perfil</label>
                   <Button variant="outline" onClick={handleAvatarClick}><Camera className="h-4 w-4 mr-2" /> Alterar foto</Button>
+                </div>
+                <div>
+                  <label className="text-sm font-display font-semibold text-foreground mb-2 block">Status / Citação</label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={statusCitacao}
+                      onChange={e => setStatusCitacao(e.target.value)}
+                      placeholder="Deixe aqui uma citação de um livro..."
+                      className="max-w-md"
+                      maxLength={140}
+                    />
+                    <Button
+                      onClick={async () => {
+                        const { error } = await (supabase as any)
+                          .from('usuarios')
+                          .update({ status_citacao: statusCitacao.trim() || null })
+                          .eq('id', user.id);
+                        if (error) toast.error('Erro ao salvar status'); else toast.success('Status atualizado!');
+                      }}
+                    >Salvar</Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
