@@ -50,7 +50,7 @@ const PublicProfile = () => {
     setLoading(true);
 
     const [{ data: userData }, { data: booksData }, followCounts, userEvents] = await Promise.all([
-      supabase.from('usuarios').select('id, nome, username, avatar_url, last_seen, status_citacao').eq('id', id).single(),
+      (supabase as any).from('usuarios').select('id, nome, username, avatar_url, last_seen, status_citacao').eq('id', id).single(),
       supabase.from('usuario_livros').select('*, livros_globais(*)').eq('usuario_id', id),
       getFollowCounts(id),
       fetchUserActivity(id),
