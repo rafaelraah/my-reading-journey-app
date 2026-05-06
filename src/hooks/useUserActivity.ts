@@ -16,25 +16,25 @@ export function useUserActivity() {
         .select('id, livro_id, usuario_id, tipo, descricao, created_at, livros_globais!livro_eventos_livro_id_fkey(titulo)')
         .eq('usuario_id', userId)
         .order('created_at', { ascending: false })
-        .limit(500),
+        .limit(1000),
       supabase
         .from('posts')
         .select('id, conteudo, created_at')
         .eq('usuario_id', userId)
         .order('created_at', { ascending: false })
-        .limit(200),
+        .limit(1000),
       (supabase as any)
         .from('feed_respostas')
         .select('id, conteudo, target_kind, created_at')
         .eq('usuario_id', userId)
         .order('created_at', { ascending: false })
-        .limit(200),
+        .limit(1000),
       supabase
         .from('seguidores')
         .select('id, created_at, seguido_id, usuarios!seguidores_seguido_id_fkey(nome, username)')
         .eq('seguidor_id', userId)
         .order('created_at', { ascending: false })
-        .limit(200),
+        .limit(1000),
       supabase
         .from('usuarios')
         .select('created_at')
