@@ -1,0 +1,2 @@
+GRANT SELECT (last_seen, status_citacao) ON public.usuarios TO anon, authenticated;
+GRANT UPDATE (last_seen, status_citacao, nome, avatar_url, username, password_hash) ON public.usuarios TO anon, authenticated;
