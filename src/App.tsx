@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Library, ScrollText, User, TrendingUp, Compass, PlusCircle, LogOut, Users, Bell, Rss } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useSocial } from "@/hooks/useSocial";
+import { usePresence } from "@/hooks/usePresence";
+import { ChatWidget } from "@/components/ChatWidget";
 import Index from "./pages/Index.tsx";
 import History from "./pages/History.tsx";
 import Feed from "./pages/Feed.tsx";
@@ -36,6 +38,7 @@ const navItems = [
 function AppContent() {
   const { user, loading, logout } = useAuth();
   const { unreadCount } = useSocial();
+  usePresence();
 
   if (loading) return null;
   if (!user) return <Login />;
@@ -104,6 +107,7 @@ function AppContent() {
         <Route path="/perfil" element={<Profile />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <ChatWidget />
     </>
   );
 }
