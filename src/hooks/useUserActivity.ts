@@ -10,7 +10,7 @@ const previewText = (value: string | null | undefined, max = 72) => {
 
 export function useUserActivity() {
   const fetchUserActivity = useCallback(async (userId: string): Promise<BookEvent[]> => {
-    const [eventsRes, postsRes, repliesRes, followsRes, userRes] = await Promise.all([
+    const [eventsRes, postsRes, repliesRes, followsRes, recsRes, userRes] = await Promise.all([
       supabase
         .from('livro_eventos')
         .select('id, livro_id, usuario_id, tipo, descricao, created_at, livros_globais!livro_eventos_livro_id_fkey(titulo)')
@@ -33,6 +33,12 @@ export function useUserActivity() {
         .from('seguidores')
         .select('id, created_at, seguido_id, usuarios!seguidores_seguido_id_fkey(nome, username)')
         .eq('seguidor_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1000),
+      (supabase as any)
+        .from('recomendacoes')
+        .select('id, livro_id, para_usuario_id, created_at, livros_globais:livro_id(titulo), usuarios:para_usuario_id(nome, username)')
+        .eq('de_usuario_id', userId)
         .order('created_at', { ascending: false })
         .limit(1000),
       supabase
@@ -84,6 +90,20 @@ export function useUserActivity() {
       };
     });
 
+    const recEvents: BookEvent[] = ((recsRes?.data as any[]) || []).map((rec) => {
+      const t = rec.usuarios;
+      const label = t?.username ? `@${t.username}` : t?.nome || 'outro leitor';
+      return {
+        id: `rec-${rec.id}`,
+        livro_id: rec.livro_id,
+        usuario_id: userId,
+        tipo: 'recommended',
+        descricao: `Recomendou para ${label}`,
+        created_at: rec.created_at,
+        livro_titulo: rec.livros_globais?.titulo,
+      };
+    });
+
     const joinedEvent: BookEvent[] = userRes.data
       ? [{
           id: `joined-${userId}`,
@@ -95,7 +115,11 @@ export function useUserActivity() {
         }]
       : [];
 
-    return [...bookEvents, ...postEvents, ...replyEvents, ...followEvents, ...joinedEvent].sort(
+    // Deduplicate: prefer the explicit recomendacoes rows over any
+    // duplicate "recommended" entry that may live in livro_eventos.
+    const filteredBookEvents = bookEvents.filter((e) => e.tipo !== 'recommended');
+
+    return [...filteredBookEvents, ...recEvents, ...postEvents, ...replyEvents, ...followEvents, ...joinedEvent].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
   }, []);
