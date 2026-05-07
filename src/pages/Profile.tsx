@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { RecommendBookButton } from '@/components/RecommendBookButton';
 import { StarRating } from '@/components/StarRating';
 import { EventTimeline } from '@/components/EventTimeline';
 import { ImageCropper } from '@/components/ImageCropper';
@@ -371,6 +372,9 @@ const Profile = () => {
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedBook.review}</p>
                   </div>
                 )}
+                <div className="border-t border-border pt-3">
+                  <RecommendBookButton bookId={selectedBook.id} bookTitle={selectedBook.titulo} />
+                </div>
               </div>
             </>
           )}

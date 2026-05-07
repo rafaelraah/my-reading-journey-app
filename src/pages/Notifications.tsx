@@ -95,9 +95,12 @@ const Notifications = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-muted-foreground">{bookModal.autor}</p>
-                  <Button className="mt-4 font-display" onClick={() => { navigate(`/explorar?livro=${bookModal.id}`); setBookModal(null); }}>
-                    Abrir perfil do livro
-                  </Button>
+                  <div className="mt-4 flex flex-col gap-2 items-start">
+                    <Button className="font-display" onClick={() => { navigate(`/explorar?livro=${bookModal.id}`); setBookModal(null); }}>
+                      Abrir perfil do livro
+                    </Button>
+                    <RecommendBookButton bookId={bookModal.id} bookTitle={bookModal.titulo} variant="outline" />
+                  </div>
                 </div>
               </div>
             </>

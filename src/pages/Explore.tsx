@@ -258,6 +258,7 @@ const Explore = () => {
                   <Share2 className="h-4 w-4 mr-2" />
                   Compartilhar no WhatsApp
                 </Button>
+                <RecommendBookButton bookId={selectedBook.id} bookTitle={selectedBook.titulo} />
               </div>
             </>
           )}
