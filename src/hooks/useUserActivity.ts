@@ -37,7 +37,7 @@ export function useUserActivity() {
         .limit(1000),
       (supabase as any)
         .from('recomendacoes')
-        .select('id, livro_id, para_usuario_id, created_at, livros_globais:livro_id(titulo), usuarios:para_usuario_id(nome, username)')
+        .select('id, livro_id, para_usuario_id, created_at')
         .eq('de_usuario_id', userId)
         .order('created_at', { ascending: false })
         .limit(1000),
@@ -90,8 +90,22 @@ export function useUserActivity() {
       };
     });
 
-    const recEvents: BookEvent[] = ((recsRes?.data as any[]) || []).map((rec) => {
-      const t = rec.usuarios;
+    const recsRaw = (recsRes?.data as any[]) || [];
+    const recBookIds = Array.from(new Set(recsRaw.map((r) => r.livro_id).filter(Boolean)));
+    const recUserIds = Array.from(new Set(recsRaw.map((r) => r.para_usuario_id).filter(Boolean)));
+    const [recBooksRes, recUsersRes] = await Promise.all([
+      recBookIds.length
+        ? supabase.from('livros_globais').select('id, titulo').in('id', recBookIds)
+        : Promise.resolve({ data: [] as any[] }),
+      recUserIds.length
+        ? supabase.from('usuarios').select('id, nome, username').in('id', recUserIds)
+        : Promise.resolve({ data: [] as any[] }),
+    ]);
+    const bookTitleMap = new Map<string, string>(((recBooksRes.data as any[]) || []).map((b) => [b.id, b.titulo]));
+    const userMap = new Map<string, any>(((recUsersRes.data as any[]) || []).map((u) => [u.id, u]));
+
+    const recEvents: BookEvent[] = recsRaw.map((rec) => {
+      const t = userMap.get(rec.para_usuario_id);
       const label = t?.username ? `@${t.username}` : t?.nome || 'outro leitor';
       return {
         id: `rec-${rec.id}`,
@@ -100,7 +114,7 @@ export function useUserActivity() {
         tipo: 'recommended',
         descricao: `Recomendou para ${label}`,
         created_at: rec.created_at,
-        livro_titulo: rec.livros_globais?.titulo,
+        livro_titulo: bookTitleMap.get(rec.livro_id),
       };
     });
 
