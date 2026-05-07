@@ -4,6 +4,8 @@ import { EventTimeline } from '@/components/EventTimeline';
 import { supabase } from '@/integrations/supabase/client';
 import { Book } from '@/types/book';
 import { Loader2, ScrollText } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserActivity } from '@/hooks/useUserActivity';
 import {
   Select,
   SelectContent,
@@ -18,29 +20,42 @@ const EVENT_TYPES = [
   { value: 'moved', label: 'Movimentação' },
   { value: 'rated', label: 'Avaliação' },
   { value: 'review_added', label: 'Resenha' },
+  { value: 'recommended', label: 'Recomendação' },
+  { value: 'removed', label: 'Remoção' },
+  { value: 'post', label: 'Publicação' },
+  { value: 'reply', label: 'Resposta' },
+  { value: 'follow', label: 'Seguindo' },
 ];
 
 const History = () => {
-  const { fetchGlobalEvents, globalEvents, loadingGlobal } = useBookEvents();
+  const { user } = useAuth();
+  const { fetchUserActivity } = useUserActivity();
   const [books, setBooks] = useState<Pick<Book, 'id' | 'titulo'>[]>([]);
+  const [allEvents, setAllEvents] = useState<BookEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [tipoFilter, setTipoFilter] = useState('all');
   const [livroFilter, setLivroFilter] = useState('all');
 
   useEffect(() => {
-    supabase.from('livros').select('id, titulo').order('titulo').then(({ data }) => {
-      if (data) setBooks(data as Pick<Book, 'id' | 'titulo'>[]);
+    if (!user) return;
+    setLoading(true);
+    fetchUserActivity(user.id).then((evts) => {
+      setAllEvents(evts);
+      // Build the list of distinct books referenced in the events
+      const seen = new Map<string, string>();
+      evts.forEach((e) => {
+        if (e.livro_id && e.livro_titulo) seen.set(e.livro_id, e.livro_titulo);
+      });
+      setBooks(Array.from(seen.entries()).map(([id, titulo]) => ({ id, titulo })));
+      setLoading(false);
     });
-  }, []);
+  }, [user, fetchUserActivity]);
 
-  useEffect(() => {
-    fetchGlobalEvents({ tipo: tipoFilter, livroId: livroFilter });
-  }, [tipoFilter, livroFilter, fetchGlobalEvents]);
-
-  // Enrich events with book titles
-  const enrichedEvents: BookEvent[] = globalEvents.map(e => ({
-    ...e,
-    livro_titulo: books.find(b => b.id === e.livro_id)?.titulo,
-  }));
+  const filteredEvents = allEvents.filter((e) => {
+    if (tipoFilter !== 'all' && e.tipo !== tipoFilter) return false;
+    if (livroFilter !== 'all' && e.livro_id !== livroFilter) return false;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -92,13 +107,13 @@ const History = () => {
         </div>
 
         {/* Timeline */}
-        {loadingGlobal ? (
+        {loading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-accent" />
           </div>
         ) : (
           <div className="parchment-bg rounded-lg border border-border p-6 animate-fade-in">
-            <EventTimeline events={enrichedEvents} showBookTitle />
+            <EventTimeline events={filteredEvents} showBookTitle />
           </div>
         )}
       </main>
