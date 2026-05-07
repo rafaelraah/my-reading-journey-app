@@ -15,7 +15,7 @@ export function useUserBooks() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'titulo' | 'created_at'>('created_at');
-  const { logCreated, logMoved, logRated, logReviewAdded } = useBookEvents();
+  const { logCreated, logMoved, logRated, logReviewAdded, logRemoved } = useBookEvents();
 
   const fetchBooks = useCallback(async () => {
     if (!user) { setLoading(false); return; }
@@ -149,6 +149,7 @@ export function useUserBooks() {
       await fetchBooks();
     } else {
       toast.success('Livro removido da estante!');
+      await logRemoved(bookId, user?.id);
     }
   };
 

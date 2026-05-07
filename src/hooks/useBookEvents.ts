@@ -37,6 +37,10 @@ export function useBookEvents() {
     return logEvent(livroId, 'review_added', 'Resenha adicionada', usuarioId);
   }, [logEvent]);
 
+  const logRemoved = useCallback((livroId: string, usuarioId?: string) => {
+    return logEvent(livroId, 'removed', 'Removeu o livro da estante', usuarioId);
+  }, [logEvent]);
+
   const fetchBookEvents = useCallback(async (livroId: string): Promise<BookEvent[]> => {
     const { data } = await supabase
       .from('livro_eventos')
@@ -69,13 +73,13 @@ export function useBookEvents() {
     }));
   }, []);
 
-  const fetchGlobalEvents = useCallback(async (filters?: { tipo?: string; livroId?: string }) => {
+  const fetchGlobalEvents = useCallback(async (filters?: { tipo?: string; livroId?: string; usuarioId?: string }) => {
     setLoadingGlobal(true);
     let query = supabase
       .from('livro_eventos')
-      .select('*')
+      .select('*, livros_globais!livro_eventos_livro_id_fkey(titulo)')
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(500);
 
     if (filters?.tipo && filters.tipo !== 'all') {
       query = query.eq('tipo', filters.tipo);
@@ -83,9 +87,20 @@ export function useBookEvents() {
     if (filters?.livroId && filters.livroId !== 'all') {
       query = query.eq('livro_id', filters.livroId);
     }
+    if (filters?.usuarioId) {
+      query = query.eq('usuario_id', filters.usuarioId);
+    }
 
     const { data } = await query;
-    setGlobalEvents((data as BookEvent[]) || []);
+    setGlobalEvents(((data as any[]) || []).map((e) => ({
+      id: e.id,
+      livro_id: e.livro_id,
+      usuario_id: e.usuario_id,
+      tipo: e.tipo,
+      descricao: e.descricao,
+      created_at: e.created_at,
+      livro_titulo: e.livros_globais?.titulo,
+    })));
     setLoadingGlobal(false);
   }, []);
 
@@ -94,6 +109,7 @@ export function useBookEvents() {
     logMoved,
     logRated,
     logReviewAdded,
+    logRemoved,
     fetchBookEvents,
     fetchUserEvents,
     fetchGlobalEvents,

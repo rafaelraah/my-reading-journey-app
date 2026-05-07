@@ -1,5 +1,5 @@
 import { BookEvent } from '@/hooks/useBookEvents';
-import { BookOpen, ArrowRightLeft, Star, FileText, PlusCircle, MessageCircle, UserPlus, Castle, Send } from 'lucide-react';
+import { BookOpen, ArrowRightLeft, Star, FileText, PlusCircle, MessageCircle, UserPlus, Castle, Send, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -14,6 +14,7 @@ const EVENT_ICON: Record<string, typeof BookOpen> = {
   follow: UserPlus,
   joined: Castle,
   recommended: Send,
+  removed: Trash2,
 };
 
 const EVENT_COLOR: Record<string, string> = {
@@ -27,6 +28,7 @@ const EVENT_COLOR: Record<string, string> = {
   follow: 'text-emerald-700 bg-emerald-100',
   joined: 'text-amber-700 bg-amber-100',
   recommended: 'text-pink-700 bg-pink-100',
+  removed: 'text-red-700 bg-red-100',
 };
 
 interface EventTimelineProps {

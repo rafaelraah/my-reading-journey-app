@@ -10,7 +10,7 @@ const previewText = (value: string | null | undefined, max = 72) => {
 
 export function useUserActivity() {
   const fetchUserActivity = useCallback(async (userId: string): Promise<BookEvent[]> => {
-    const [eventsRes, postsRes, repliesRes, followsRes, userRes] = await Promise.all([
+    const [eventsRes, postsRes, repliesRes, followsRes, recsRes, userRes] = await Promise.all([
       supabase
         .from('livro_eventos')
         .select('id, livro_id, usuario_id, tipo, descricao, created_at, livros_globais!livro_eventos_livro_id_fkey(titulo)')
@@ -33,6 +33,12 @@ export function useUserActivity() {
         .from('seguidores')
         .select('id, created_at, seguido_id, usuarios!seguidores_seguido_id_fkey(nome, username)')
         .eq('seguidor_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1000),
+      (supabase as any)
+        .from('recomendacoes')
+        .select('id, livro_id, para_usuario_id, created_at')
+        .eq('de_usuario_id', userId)
         .order('created_at', { ascending: false })
         .limit(1000),
       supabase
@@ -84,6 +90,34 @@ export function useUserActivity() {
       };
     });
 
+    const recsRaw = (recsRes?.data as any[]) || [];
+    const recBookIds = Array.from(new Set(recsRaw.map((r) => r.livro_id).filter(Boolean)));
+    const recUserIds = Array.from(new Set(recsRaw.map((r) => r.para_usuario_id).filter(Boolean)));
+    const [recBooksRes, recUsersRes] = await Promise.all([
+      recBookIds.length
+        ? supabase.from('livros_globais').select('id, titulo').in('id', recBookIds)
+        : Promise.resolve({ data: [] as any[] }),
+      recUserIds.length
+        ? supabase.from('usuarios').select('id, nome, username').in('id', recUserIds)
+        : Promise.resolve({ data: [] as any[] }),
+    ]);
+    const bookTitleMap = new Map<string, string>(((recBooksRes.data as any[]) || []).map((b) => [b.id, b.titulo]));
+    const userMap = new Map<string, any>(((recUsersRes.data as any[]) || []).map((u) => [u.id, u]));
+
+    const recEvents: BookEvent[] = recsRaw.map((rec) => {
+      const t = userMap.get(rec.para_usuario_id);
+      const label = t?.username ? `@${t.username}` : t?.nome || 'outro leitor';
+      return {
+        id: `rec-${rec.id}`,
+        livro_id: rec.livro_id,
+        usuario_id: userId,
+        tipo: 'recommended',
+        descricao: `Recomendou para ${label}`,
+        created_at: rec.created_at,
+        livro_titulo: bookTitleMap.get(rec.livro_id),
+      };
+    });
+
     const joinedEvent: BookEvent[] = userRes.data
       ? [{
           id: `joined-${userId}`,
@@ -95,7 +129,11 @@ export function useUserActivity() {
         }]
       : [];
 
-    return [...bookEvents, ...postEvents, ...replyEvents, ...followEvents, ...joinedEvent].sort(
+    // Deduplicate: prefer the explicit recomendacoes rows over any
+    // duplicate "recommended" entry that may live in livro_eventos.
+    const filteredBookEvents = bookEvents.filter((e) => e.tipo !== 'recommended');
+
+    return [...filteredBookEvents, ...recEvents, ...postEvents, ...replyEvents, ...followEvents, ...joinedEvent].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
   }, []);
