@@ -6,6 +6,7 @@ import { Bell, CheckCheck, BookOpen } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { RecommendBookButton } from '@/components/RecommendBookButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
@@ -95,9 +96,12 @@ const Notifications = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-muted-foreground">{bookModal.autor}</p>
-                  <Button className="mt-4 font-display" onClick={() => { navigate(`/explorar?livro=${bookModal.id}`); setBookModal(null); }}>
-                    Abrir perfil do livro
-                  </Button>
+                  <div className="mt-4 flex flex-col gap-2 items-start">
+                    <Button className="font-display" onClick={() => { navigate(`/explorar?livro=${bookModal.id}`); setBookModal(null); }}>
+                      Abrir perfil do livro
+                    </Button>
+                    <RecommendBookButton bookId={bookModal.id} bookTitle={bookModal.titulo} variant="outline" />
+                  </div>
                 </div>
               </div>
             </>

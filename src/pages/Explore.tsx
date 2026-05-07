@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { RecommendBookButton } from '@/components/RecommendBookButton';
 import { ReviewModal } from '@/components/ReviewModal';
 import { BookOpen, Search, Loader2, Users, Star, Share2, Plus, CheckCircle } from 'lucide-react';
 import { StarRating } from '@/components/StarRating';
@@ -258,6 +259,7 @@ const Explore = () => {
                   <Share2 className="h-4 w-4 mr-2" />
                   Compartilhar no WhatsApp
                 </Button>
+                <RecommendBookButton bookId={selectedBook.id} bookTitle={selectedBook.titulo} />
               </div>
             </>
           )}

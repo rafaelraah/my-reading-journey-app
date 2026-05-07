@@ -14,6 +14,7 @@ import { StarRating } from '@/components/StarRating';
 import { EventTimeline } from '@/components/EventTimeline';
 import { ProfileStatsModal, StatsModalKind, favoriteGenre } from '@/components/ProfileStatsModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { RecommendBookButton } from '@/components/RecommendBookButton';
 import { User, BookOpen, Loader2, Star, Clock, BarChart3, Sparkles, BookMarked, BookOpenCheck, Library, MessageSquare } from 'lucide-react';
 import { ProfileFeed } from '@/components/ProfileFeed';
 import { isOnline } from '@/hooks/usePresence';
@@ -332,6 +333,9 @@ const PublicProfile = () => {
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedBook.review}</p>
                   </div>
                 )}
+                <div className="border-t border-border pt-3">
+                  <RecommendBookButton bookId={selectedBook.id} bookTitle={selectedBook.titulo} />
+                </div>
               </div>
             </>
           )}
