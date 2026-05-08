@@ -32,6 +32,14 @@ export interface FeedReply {
   author: FeedAuthor | null;
 }
 
+export type ReactionEmoji = 'heart' | 'thumbs_up' | 'thumbs_down' | 'laugh';
+export const REACTION_EMOJIS: { key: ReactionEmoji; label: string; emoji: string }[] = [
+  { key: 'heart', label: 'Amei', emoji: '❤️' },
+  { key: 'thumbs_up', label: 'Curti', emoji: '👍' },
+  { key: 'thumbs_down', label: 'Não curti', emoji: '👎' },
+  { key: 'laugh', label: 'Engraçado', emoji: '😄' },
+];
+
 /**
  * Aggregate book events + user posts into a single chronological feed.
  * If `userIds` is provided, restricts to those users (e.g., "following only").
