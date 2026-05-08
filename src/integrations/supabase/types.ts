@@ -71,7 +71,7 @@ export type Database = {
             foreignKeyName: "livro_eventos_livro_id_fkey"
             columns: ["livro_id"]
             isOneToOne: false
-            referencedRelation: "livros"
+            referencedRelation: "livros_globais"
             referencedColumns: ["id"]
           },
         ]
