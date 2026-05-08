@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      feed_reacoes: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          target_id: string
+          target_kind: string
+          usuario_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          target_id: string
+          target_kind: string
+          usuario_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          target_id?: string
+          target_kind?: string
+          usuario_id?: string
+        }
+        Relationships: []
+      }
       feed_respostas: {
         Row: {
           conteudo: string
@@ -69,6 +96,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "livro_eventos_livro_id_fkey"
+            columns: ["livro_id"]
+            isOneToOne: false
+            referencedRelation: "livros_globais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      livro_historicos: {
+        Row: {
+          conteudo: string
+          created_at: string
+          id: string
+          livro_id: string
+          usuario_id: string
+        }
+        Insert: {
+          conteudo: string
+          created_at?: string
+          id?: string
+          livro_id: string
+          usuario_id: string
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string
+          id?: string
+          livro_id?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "livro_historicos_livro_id_fkey"
             columns: ["livro_id"]
             isOneToOne: false
             referencedRelation: "livros_globais"
