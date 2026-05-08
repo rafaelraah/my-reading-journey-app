@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -28,7 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { BookOpen, Trash2, Share2, Send, User as UserIcon, Loader2 } from 'lucide-react';
+import { BookOpen, Trash2, Share2, Send, User as UserIcon, Loader2, NotebookPen } from 'lucide-react';
 
 interface BookDetailModalProps {
   book: Book | null;
@@ -47,10 +48,37 @@ export function BookDetailModal({ book, open, onClose, onDelete }: BookDetailMod
   const [following, setFollowing] = useState<{ id: string; nome: string; username: string | null; avatar_url: string | null }[]>([]);
   const [loadingFollowing, setLoadingFollowing] = useState(false);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
+  const [historyText, setHistoryText] = useState('');
+  const [savingHistory, setSavingHistory] = useState(false);
+
+  const loadEvents = async () => {
+    if (!book) return;
+    // Combine livro_eventos with livro_historicos so they appear together in the timeline.
+    const [evts, histRes] = await Promise.all([
+      fetchBookEvents(book.id),
+      (supabase as any)
+        .from('livro_historicos')
+        .select('id, livro_id, usuario_id, conteudo, created_at')
+        .eq('livro_id', book.id)
+        .order('created_at', { ascending: false }),
+    ]);
+    const histEvents: BookEvent[] = ((histRes?.data as any[]) || []).map((h) => ({
+      id: `hist-${h.id}`,
+      livro_id: h.livro_id,
+      usuario_id: h.usuario_id,
+      tipo: 'historico_leitura',
+      descricao: `Histórico de leitura: “${h.conteudo}”`,
+      created_at: h.created_at,
+    }));
+    const merged = [...evts, ...histEvents].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+    setEvents(merged);
+  };
 
   useEffect(() => {
     if (book && open) {
-      fetchBookEvents(book.id).then(setEvents);
+      loadEvents();
       // Compute average rating across all users for this book
       (async () => {
         const { data } = await supabase
@@ -65,8 +93,41 @@ export function BookDetailModal({ book, open, onClose, onDelete }: BookDetailMod
     } else {
       setEvents([]);
       setAvgInfo(null);
+      setHistoryText('');
     }
-  }, [book, open, fetchBookEvents]);
+  }, [book, open]);
+
+  const handleAddHistory = async () => {
+    if (!book || !user || !historyText.trim()) return;
+    setSavingHistory(true);
+    const text = historyText.trim();
+    const { error } = await (supabase as any).from('livro_historicos').insert({
+      livro_id: book.id,
+      usuario_id: user.id,
+      conteudo: text,
+    });
+    if (error) {
+      toast.error('Erro ao salvar histórico');
+      setSavingHistory(false);
+      return;
+    }
+    // Log to user activity timeline
+    await supabase.from('livro_eventos').insert({
+      livro_id: book.id,
+      usuario_id: user.id,
+      tipo: 'historico_leitura',
+      descricao: `Adicionou histórico de leitura: “${text.slice(0, 80)}${text.length > 80 ? '…' : ''}”`,
+    } as any);
+    // Auto-post to the feed so others can see and react.
+    await supabase.from('posts').insert({
+      usuario_id: user.id,
+      conteudo: `📖 Histórico de leitura — "${book.titulo}"\n\n${text}`,
+    } as any);
+    toast.success('Histórico adicionado!');
+    setHistoryText('');
+    setSavingHistory(false);
+    await loadEvents();
+  };
 
   const openRecommend = async () => {
     if (!user) return;
@@ -165,6 +226,28 @@ export function BookDetailModal({ book, open, onClose, onDelete }: BookDetailMod
         {/* Timeline */}
         <div className="mt-4 p-4 rounded-lg bg-background/60 border border-border">
           <h4 className="font-display text-sm font-semibold mb-3 text-foreground">Histórico</h4>
+
+          {user && (
+            <div className="mb-4 space-y-2">
+              <label className="text-xs font-display font-semibold text-foreground flex items-center gap-1">
+                <NotebookPen className="h-3.5 w-3.5 text-accent" /> Adicionar histórico de leitura
+              </label>
+              <Textarea
+                value={historyText}
+                onChange={(e) => setHistoryText(e.target.value)}
+                placeholder="Ex: Cheguei ao capítulo 5, reviravolta inesperada!"
+                rows={3}
+                maxLength={500}
+                className="resize-none text-sm"
+              />
+              <div className="flex justify-end">
+                <Button size="sm" onClick={handleAddHistory} disabled={!historyText.trim() || savingHistory} className="font-display">
+                  {savingHistory ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1.5" /> Publicar</>}
+                </Button>
+              </div>
+            </div>
+          )}
+
           <EventTimeline events={events} />
         </div>
 
