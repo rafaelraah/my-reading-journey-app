@@ -193,3 +193,45 @@ export function useFeed() {
 
   return { items, loading, fetchFeed, createPost, fetchReplies, createReply };
 }
+
+/**
+ * Fetch reaction counts and the current user's reactions for a feed item.
+ */
+export async function fetchReactions(kind: 'event' | 'post', targetId: string, currentUserId?: string) {
+  const { data } = await (supabase as any)
+    .from('feed_reacoes')
+    .select('emoji, usuario_id')
+    .eq('target_kind', kind)
+    .eq('target_id', targetId);
+  const rows = (data as any[]) || [];
+  const counts: Record<string, number> = {};
+  const mine: Record<string, boolean> = {};
+  rows.forEach((r) => {
+    counts[r.emoji] = (counts[r.emoji] || 0) + 1;
+    if (currentUserId && r.usuario_id === currentUserId) mine[r.emoji] = true;
+  });
+  return { counts, mine };
+}
+
+export async function toggleReaction(
+  kind: 'event' | 'post',
+  targetId: string,
+  usuarioId: string,
+  emoji: ReactionEmoji,
+  currentlyReacted: boolean,
+) {
+  if (currentlyReacted) {
+    const { error } = await (supabase as any)
+      .from('feed_reacoes')
+      .delete()
+      .eq('target_kind', kind)
+      .eq('target_id', targetId)
+      .eq('usuario_id', usuarioId)
+      .eq('emoji', emoji);
+    return { error: error?.message || null };
+  }
+  const { error } = await (supabase as any)
+    .from('feed_reacoes')
+    .insert({ target_kind: kind, target_id: targetId, usuario_id: usuarioId, emoji });
+  return { error: error?.message || null };
+}
