@@ -1,6 +1,4 @@
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocial } from '@/hooks/useSocial';
 import { useFeed, FeedItem, FeedReply } from '@/hooks/useFeed';
@@ -9,20 +7,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Globe, Users as UsersIcon, Loader2, Send, BookOpen, MessageSquare, ArrowRightLeft, Star, FileText, PlusCircle, User as UserIcon, Reply as ReplyIcon } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { Globe, Users as UsersIcon, Loader2, Send, User as UserIcon } from 'lucide-react';
 import { toast } from 'sonner';
-
-const EVENT_META: Record<string, { icon: any; color: string }> = {
-  created: { icon: PlusCircle, color: 'text-green-600 bg-green-100' },
-  moved: { icon: ArrowRightLeft, color: 'text-blue-600 bg-blue-100' },
-  rated: { icon: Star, color: 'text-yellow-600 bg-yellow-100' },
-  review_added: { icon: FileText, color: 'text-orange-600 bg-orange-100' },
-  progress_updated: { icon: BookOpen, color: 'text-purple-600 bg-purple-100' },
-  recommended: { icon: Send, color: 'text-pink-600 bg-pink-100' },
-};
+import { FeedItemCard } from '@/components/FeedItemCard';
 
 const Feed = () => {
   const { user } = useAuth();
