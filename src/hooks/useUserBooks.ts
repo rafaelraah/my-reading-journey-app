@@ -129,7 +129,16 @@ export function useUserBooks() {
       await fetchBooks();
     } else {
       await logRated(bookId, rating, user?.id);
-      if (review.trim()) await logReviewAdded(bookId, user?.id);
+      if (review.trim()) {
+        await logReviewAdded(bookId, user?.id);
+        // Also auto-post the review to the feed so others can react/reply.
+        if (user?.id) {
+          await supabase.from('posts').insert({
+            usuario_id: user.id,
+            conteudo: `⭐ Avaliei "${ub.titulo}" com ${rating}/10\n\n${review.trim()}`,
+          } as any);
+        }
+      }
     }
   };
 
