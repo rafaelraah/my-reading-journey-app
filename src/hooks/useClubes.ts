@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 
 export interface Clube {
   id: string;
@@ -238,5 +237,3 @@ export async function fetchUserClubes(userId: string): Promise<Clube[]> {
     .eq('status', 'aceito');
   return ((data || []) as any[]).map((m) => m.clubes_leitura).filter(Boolean);
 }
-
-export { toast as _toast };
