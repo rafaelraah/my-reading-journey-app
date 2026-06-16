@@ -10,7 +10,7 @@ const previewText = (value: string | null | undefined, max = 72) => {
 
 export function useUserActivity() {
   const fetchUserActivity = useCallback(async (userId: string): Promise<BookEvent[]> => {
-    const [eventsRes, postsRes, repliesRes, followsRes, recsRes, userRes] = await Promise.all([
+    const [eventsRes, postsRes, repliesRes, followsRes, recsRes, userRes, clubMembRes, clubProgRes, clubPostsRes] = await Promise.all([
       supabase
         .from('livro_eventos')
         .select('id, livro_id, usuario_id, tipo, descricao, created_at, livros_globais!livro_eventos_livro_id_fkey(titulo)')
@@ -46,6 +46,18 @@ export function useUserActivity() {
         .select('created_at')
         .eq('id', userId)
         .single(),
+      (supabase as any)
+        .from('clube_membros')
+        .select('id, clube_id, status, created_at, clubes_leitura:clube_id(nome, criador_id)')
+        .eq('usuario_id', userId),
+      (supabase as any)
+        .from('clube_progresso')
+        .select('id, clube_id, pagina_atual, percentual, status, updated_at, clubes_leitura:clube_id(nome)')
+        .eq('usuario_id', userId),
+      (supabase as any)
+        .from('clube_posts')
+        .select('id, clube_id, conteudo, tipo, created_at, clubes_leitura:clube_id(nome)')
+        .eq('usuario_id', userId),
     ]);
 
     const bookEvents: BookEvent[] = ((eventsRes.data as any[]) || []).map((event) => ({
@@ -129,11 +141,42 @@ export function useUserActivity() {
         }]
       : [];
 
+    const clubMembEvents: BookEvent[] = (((clubMembRes as any)?.data) || []).filter((m: any) => m.status === 'aceito').map((m: any) => {
+      const nome = m.clubes_leitura?.nome || 'um clube';
+      const isCreator = m.clubes_leitura?.criador_id === userId;
+      return {
+        id: `clube-${m.id}`,
+        livro_id: '',
+        usuario_id: userId,
+        tipo: isCreator ? 'clube_created' : 'clube_joined',
+        descricao: isCreator ? `Criou o clube "${nome}"` : `Entrou no clube "${nome}"`,
+        created_at: m.created_at,
+      };
+    });
+
+    const clubProgEvents: BookEvent[] = (((clubProgRes as any)?.data) || []).map((p: any) => ({
+      id: `clubeprog-${p.id}`,
+      livro_id: '',
+      usuario_id: userId,
+      tipo: 'clube_progress',
+      descricao: `Atualizou progresso no clube "${p.clubes_leitura?.nome}" — página ${p.pagina_atual} (${p.percentual}%)`,
+      created_at: p.updated_at,
+    }));
+
+    const clubPostEvents: BookEvent[] = (((clubPostsRes as any)?.data) || []).filter((p: any) => p.tipo === 'post').map((p: any) => ({
+      id: `clubepost-${p.id}`,
+      livro_id: '',
+      usuario_id: userId,
+      tipo: 'clube_post',
+      descricao: `Postou no clube "${p.clubes_leitura?.nome}": “${previewText(p.conteudo)}”`,
+      created_at: p.created_at,
+    }));
+
     // Deduplicate: prefer the explicit recomendacoes rows over any
     // duplicate "recommended" entry that may live in livro_eventos.
     const filteredBookEvents = bookEvents.filter((e) => e.tipo !== 'recommended');
 
-    return [...filteredBookEvents, ...recEvents, ...postEvents, ...replyEvents, ...followEvents, ...joinedEvent].sort(
+    return [...filteredBookEvents, ...recEvents, ...postEvents, ...replyEvents, ...followEvents, ...joinedEvent, ...clubMembEvents, ...clubProgEvents, ...clubPostEvents].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
   }, []);
