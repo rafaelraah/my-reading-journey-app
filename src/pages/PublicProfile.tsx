@@ -15,8 +15,9 @@ import { EventTimeline } from '@/components/EventTimeline';
 import { ProfileStatsModal, StatsModalKind, favoriteGenre } from '@/components/ProfileStatsModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RecommendBookButton } from '@/components/RecommendBookButton';
-import { User, BookOpen, Loader2, Star, Clock, BarChart3, Sparkles, BookMarked, BookOpenCheck, Library, MessageSquare } from 'lucide-react';
+import { User, BookOpen, Loader2, Star, Clock, BarChart3, Sparkles, BookMarked, BookOpenCheck, Library, MessageSquare, Castle } from 'lucide-react';
 import { ProfileFeed } from '@/components/ProfileFeed';
+import { UserClubesSection } from '@/components/UserClubesSection';
 import { isOnline } from '@/hooks/usePresence';
 import { Book } from '@/types/book';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
@@ -200,11 +201,12 @@ const PublicProfile = () => {
       {/* Tabs */}
       <div className="container max-w-4xl mx-auto px-4 py-6">
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="w-full grid grid-cols-5 mb-6">
+          <TabsList className="w-full grid grid-cols-6 mb-6">
             <TabsTrigger value="dashboard" className="flex items-center gap-1.5 text-sm"><BarChart3 className="h-4 w-4" /> Dashboard</TabsTrigger>
             <TabsTrigger value="books" className="flex items-center gap-1.5 text-sm"><BookOpen className="h-4 w-4" /> Livros</TabsTrigger>
             <TabsTrigger value="ratings" className="flex items-center gap-1.5 text-sm"><Star className="h-4 w-4" /> Avaliações</TabsTrigger>
             <TabsTrigger value="feed" className="flex items-center gap-1.5 text-sm"><MessageSquare className="h-4 w-4" /> Feed</TabsTrigger>
+            <TabsTrigger value="clubes" className="flex items-center gap-1.5 text-sm"><Castle className="h-4 w-4" /> Clubes</TabsTrigger>
             <TabsTrigger value="activity" className="flex items-center gap-1.5 text-sm"><Clock className="h-4 w-4" /> Atividade</TabsTrigger>
           </TabsList>
 
@@ -271,6 +273,10 @@ const PublicProfile = () => {
 
           <TabsContent value="feed">
             <ProfileFeed userId={profile.id} />
+          </TabsContent>
+
+          <TabsContent value="clubes">
+            <UserClubesSection userId={profile.id} />
           </TabsContent>
 
           <TabsContent value="activity">

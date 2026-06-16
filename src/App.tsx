@@ -3,7 +3,7 @@ import { BrowserRouter, Route, Routes, NavLink } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Library, ScrollText, User, TrendingUp, Compass, PlusCircle, LogOut, Users, Bell, Rss } from "lucide-react";
+import { Library, ScrollText, User, TrendingUp, Compass, PlusCircle, LogOut, Users, Bell, Rss, Castle } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useSocial } from "@/hooks/useSocial";
 import { usePresence } from "@/hooks/usePresence";
@@ -18,6 +18,8 @@ import AddBook from "./pages/AddBook.tsx";
 import UsersPage from "./pages/Users.tsx";
 import PublicProfile from "./pages/PublicProfile.tsx";
 import Notifications from "./pages/Notifications.tsx";
+import Clubes from "./pages/Clubes.tsx";
+import ClubeDetail from "./pages/ClubeDetail.tsx";
 import Login from "./pages/Login.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import { Button } from "@/components/ui/button";
@@ -32,6 +34,7 @@ const navItems = [
   { to: "/explorar", label: "Explorar", icon: Compass },
   { to: "/adicionar", label: "Adicionar", icon: PlusCircle },
   { to: "/usuarios", label: "Usuários", icon: Users },
+  { to: "/clubes", label: "Clube de Leitura", icon: Castle },
   { to: "/perfil", label: "Perfil", icon: User },
 ];
 
@@ -103,6 +106,8 @@ function AppContent() {
         <Route path="/adicionar" element={<AddBook />} />
         <Route path="/usuarios" element={<UsersPage />} />
         <Route path="/usuario/:id" element={<PublicProfile />} />
+        <Route path="/clubes" element={<Clubes />} />
+        <Route path="/clubes/:id" element={<ClubeDetail />} />
         <Route path="/notificacoes" element={<Notifications />} />
         <Route path="/perfil" element={<Profile />} />
         <Route path="*" element={<NotFound />} />
