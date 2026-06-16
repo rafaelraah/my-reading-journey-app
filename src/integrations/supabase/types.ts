@@ -14,6 +14,232 @@ export type Database = {
   }
   public: {
     Tables: {
+      clube_comentarios: {
+        Row: {
+          conteudo: string
+          created_at: string
+          id: string
+          post_id: string
+          usuario_id: string
+        }
+        Insert: {
+          conteudo: string
+          created_at?: string
+          id?: string
+          post_id: string
+          usuario_id: string
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clube_comentarios_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "clube_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clube_comentarios_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clube_membros: {
+        Row: {
+          clube_id: string
+          created_at: string
+          id: string
+          is_admin: boolean
+          status: string
+          usuario_id: string
+        }
+        Insert: {
+          clube_id: string
+          created_at?: string
+          id?: string
+          is_admin?: boolean
+          status?: string
+          usuario_id: string
+        }
+        Update: {
+          clube_id?: string
+          created_at?: string
+          id?: string
+          is_admin?: boolean
+          status?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clube_membros_clube_id_fkey"
+            columns: ["clube_id"]
+            isOneToOne: false
+            referencedRelation: "clubes_leitura"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clube_membros_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clube_posts: {
+        Row: {
+          clube_id: string
+          conteudo: string
+          created_at: string
+          id: string
+          tipo: string
+          usuario_id: string
+        }
+        Insert: {
+          clube_id: string
+          conteudo: string
+          created_at?: string
+          id?: string
+          tipo?: string
+          usuario_id: string
+        }
+        Update: {
+          clube_id?: string
+          conteudo?: string
+          created_at?: string
+          id?: string
+          tipo?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clube_posts_clube_id_fkey"
+            columns: ["clube_id"]
+            isOneToOne: false
+            referencedRelation: "clubes_leitura"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clube_posts_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clube_progresso: {
+        Row: {
+          clube_id: string
+          id: string
+          livro_id: string | null
+          pagina_atual: number
+          percentual: number
+          status: string
+          updated_at: string
+          usuario_id: string
+        }
+        Insert: {
+          clube_id: string
+          id?: string
+          livro_id?: string | null
+          pagina_atual?: number
+          percentual?: number
+          status?: string
+          updated_at?: string
+          usuario_id: string
+        }
+        Update: {
+          clube_id?: string
+          id?: string
+          livro_id?: string | null
+          pagina_atual?: number
+          percentual?: number
+          status?: string
+          updated_at?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clube_progresso_clube_id_fkey"
+            columns: ["clube_id"]
+            isOneToOne: false
+            referencedRelation: "clubes_leitura"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clube_progresso_livro_id_fkey"
+            columns: ["livro_id"]
+            isOneToOne: false
+            referencedRelation: "livros_globais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clube_progresso_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clubes_leitura: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          criador_id: string
+          descricao: string | null
+          id: string
+          imagem_url: string | null
+          livro_ativo_id: string | null
+          nome: string
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          criador_id: string
+          descricao?: string | null
+          id?: string
+          imagem_url?: string | null
+          livro_ativo_id?: string | null
+          nome: string
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          criador_id?: string
+          descricao?: string | null
+          id?: string
+          imagem_url?: string | null
+          livro_ativo_id?: string | null
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clubes_leitura_criador_id_fkey"
+            columns: ["criador_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubes_leitura_livro_ativo_id_fkey"
+            columns: ["livro_ativo_id"]
+            isOneToOne: false
+            referencedRelation: "livros_globais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feed_reacoes: {
         Row: {
           created_at: string
