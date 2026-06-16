@@ -28,6 +28,9 @@ const Notifications = () => {
         .single();
       if (data) setBookModal(data as any);
     }
+    if (n.tipo === 'clube_invite' || n.tipo === 'clube_post' || n.tipo === 'clube_member' || n.tipo === 'clube_book') {
+      navigate('/clubes');
+    }
   };
 
   return (
